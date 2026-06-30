@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="spec.md" />
+  </Folder>
+  <Project Path="DuplicitiesFindAndRemove.Cli/DuplicitiesFindAndRemove.Cli.csproj" Id="747d549d-2821-475f-a2bc-6ae4e973a3a0" />
+  <Project Path="DuplicitiesFindAndRemove.Core/DuplicitiesFindAndRemove.Core.csproj" Id="5c80027c-1bd3-47e0-ae1a-3254ebf1557f" />
+  <Project Path="DuplicitiesFindAndRemove.Tests/DuplicitiesFindAndRemove.Tests.csproj" Id="01ef1985-7a06-4ca1-8f3f-ec79f38217b9" />
+</Solution>

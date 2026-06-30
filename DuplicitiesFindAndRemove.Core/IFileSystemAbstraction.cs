@@ -1,0 +1,39 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace DuplicitiesFindAndRemove.Core;
+
+public interface IFileSystemAbstraction
+{
+    bool FileExists(string path);
+
+    bool DirectoryExists(string path);
+
+    long GetFileSize(string path);
+
+    long? GetLastWriteTimeUtcNanoseconds(string path);
+
+    Stream OpenRead(string path);
+
+    IAsyncEnumerable<string> EnumerateFilesAsync(
+        string rootPath,
+        string searchPattern = "*",
+        CancellationToken cancellationToken = default);
+
+    Task EnsureDirectoryExistsAsync(
+        string path,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteFileAsync(
+        string path,
+        CancellationToken cancellationToken = default);
+
+    Task MoveFileAsync(
+        string sourcePath,
+        string destinationPath,
+        CancellationToken cancellationToken = default);
+
+    bool IsSameFilePath(string path1, string path2);
+}
