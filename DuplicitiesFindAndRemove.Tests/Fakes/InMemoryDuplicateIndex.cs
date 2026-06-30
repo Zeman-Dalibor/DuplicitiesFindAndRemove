@@ -1,5 +1,5 @@
-using DuplicitiesFindAndRemove.Core;
 using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 
 namespace DuplicitiesFindAndRemove.Tests.Fakes;
 
@@ -15,6 +15,15 @@ internal sealed class InMemoryDuplicateIndex : IDuplicateIndex
 
     public Task<FileRecordEntity?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
         => Task.FromResult(records.FirstOrDefault(record => record.Path == path));
+
+    public async Task<IReadOnlyCollection<FileRecordEntity>> GetBySize(long sizeBytes, CancellationToken cancellationToken)
+    {
+        IReadOnlyCollection<FileRecordEntity> matches = records
+            .Where(record => record.SizeBytes == sizeBytes)
+            .ToList();
+
+        return await Task.FromResult(matches);
+    }
 
     public Task<IReadOnlyList<FileRecordEntity>> GetBySizeAndSampleHashAsync(
         long sizeBytes,
@@ -76,5 +85,11 @@ internal sealed class InMemoryDuplicateIndex : IDuplicateIndex
         }
 
         records.Add(record);
+    }
+
+    public void Initialize()
+    {
+        records.Clear();
+        nextId = 1;
     }
 }

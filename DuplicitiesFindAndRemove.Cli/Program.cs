@@ -2,6 +2,7 @@
 using DuplicitiesFindAndRemove.Core;
 using DuplicitiesFindAndRemove.Core.Database;
 using DuplicitiesFindAndRemove.Core.Hashing;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 using DuplicitiesFindAndRemove.Core.Verification;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,28 +17,7 @@ internal static class Program
 
         string dbPath = Path.Combine(AppContext.BaseDirectory, "duplicates.db");
 
-        // SQLite memory DB
-        services.AddSingleton(new SqliteInMemoryDatabase(dbPath));
-
-        // EF Core
-        services.AddDbContext<DuplicateDbContext>((sp, options) =>
-        {
-            var memDb = sp.GetRequiredService<SqliteInMemoryDatabase>();
-            options.UseSqlite(memDb.MemoryConnection);
-        });
-
-        // Core services
-        services.AddSingleton<IFileSystemAbstraction, FileSystemAbstraction>();
-        services.AddSingleton<IFileContentHasher, Blake3Hasher>();
-        services.AddSingleton<IDuplicateVerifier, ByteCompareVerifier>();
-        services.AddSingleton(new DuplicateDetectionOptions());
-        services.AddScoped<IDuplicateIndex>(sp => sp.GetRequiredService<DuplicateDbContext>());
-        services.AddScoped<IDuplicateScanner, DuplicateScanner>();
-
-        // CLI commands
-        services.AddScoped<ScanCommand>();
-        services.AddScoped<ReportCommand>();
-        services.AddScoped<PruneCommand>();
+        services.AddApplicationServices(dbPath);
 
         var provider = services.BuildServiceProvider();
 
@@ -63,5 +43,31 @@ internal static class Program
 
             db.Dispose();
         }
+    }
+
+    internal static void AddApplicationServices(this ServiceCollection services, string dbPath)
+    {
+        // SQLite memory DB
+        services.AddSingleton(new SqliteInMemoryDatabase(dbPath));
+
+        // EF Core
+        services.AddDbContext<DuplicateDbContext>((sp, options) =>
+        {
+            var memDb = sp.GetRequiredService<SqliteInMemoryDatabase>();
+            options.UseSqlite(memDb.MemoryConnection);
+        });
+
+        // Core services
+        services.AddSingleton<IFileSystemAbstraction, FileSystemAbstraction>();
+        services.AddSingleton<IFileContentHasher, Blake3Hasher>();
+        services.AddSingleton<IDuplicateVerifier, ByteCompareVerifier>();
+        services.AddSingleton(new DuplicateDetectionOptions());
+        services.AddScoped<IDuplicateIndex>(sp => sp.GetRequiredService<DuplicateDbContext>());
+        services.AddScoped<IDuplicateScanner, DuplicateScanner>();
+
+        // CLI commands
+        services.AddScoped<ScanCommand>();
+        services.AddScoped<ReportCommand>();
+        services.AddScoped<PruneCommand>();
     }
 }

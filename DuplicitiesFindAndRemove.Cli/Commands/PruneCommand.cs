@@ -63,14 +63,16 @@ internal sealed class PruneCommand
             if (!originalsById.TryGetValue(duplicate.DuplicateOfFileId, out string? originalPath))
             {
                 await db.SaveChangesAsync();
-                Console.Error.WriteLine($"FATAL: Original file record not found for duplicate: {duplicate.Path}");
+                await Console.Error.WriteLineAsync($"FATAL: Original file record not found for duplicate: {duplicate.Path}. " +
+                                        $"Target path: {targetPath}");
                 return ExitCode.Error;
             }
 
             if (!File.Exists(originalPath))
             {
                 await db.SaveChangesAsync();
-                Console.Error.WriteLine($"FATAL: Original file is missing after moving the duplicate: {originalPath}");
+                await Console.Error.WriteLineAsync($"FATAL: Original file is missing after moving the duplicate: {originalPath}. " +
+                                        $"Target path: {targetPath}");
                 return ExitCode.Error;
             }
         }

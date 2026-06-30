@@ -1,4 +1,4 @@
-namespace DuplicitiesFindAndRemove.Core;
+namespace DuplicitiesFindAndRemove.Core.Interfaces;
 
 public interface IFileContentHasher
 {

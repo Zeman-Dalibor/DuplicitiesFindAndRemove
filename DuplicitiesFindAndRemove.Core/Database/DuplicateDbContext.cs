@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using DuplicitiesFindAndRemove.Core.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace DuplicitiesFindAndRemove.Core.Database;
 
@@ -7,6 +8,11 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     public DuplicateDbContext(DbContextOptions<DuplicateDbContext> options)
         : base(options)
     {
+    }
+
+    public void Initialize()
+    {
+        Database.EnsureCreated();
     }
 
     public DbSet<FileRecordEntity> FileRecords => Set<FileRecordEntity>();
@@ -37,10 +43,24 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         return duplicate is null ? null : ToFileRecord(duplicate);
     }
 
+    public async Task<IReadOnlyCollection<FileRecordEntity>> GetBySize(long sizeBytes, CancellationToken cancellationToken)
+    {
+        return await FileRecords
+            .Where(entity => entity.SizeBytes == sizeBytes)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<FileRecordEntity>> GetBySizeAndSampleHashAsync(long sizeBytes, byte[] sampleHash, CancellationToken cancellationToken = default)
     {
         return await FileRecords
             .Where(entity => entity.SizeBytes == sizeBytes && entity.SampleHash == sampleHash)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<FileRecordEntity>> GetBySizeAndFullHashAsync(long sizeBytes, byte[] fullHash, CancellationToken cancellationToken)
+    {
+        return await FileRecords
+            .Where(entity => entity.SizeBytes == sizeBytes && entity.FullHash == fullHash)
             .ToListAsync(cancellationToken);
     }
 
@@ -50,13 +70,6 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     public void SetFileAsModified(FileRecordEntity record)
     {
         Entry(record).State = EntityState.Modified;
-    }
-
-    public async Task<IReadOnlyCollection<FileRecordEntity>> GetBySizeAndFullHashAsync(long sizeBytes, byte[] fullHash, CancellationToken cancellationToken)
-    {
-        return await FileRecords
-            .Where(entity => entity.SizeBytes == sizeBytes && entity.FullHash == fullHash)
-            .ToListAsync(cancellationToken);
     }
 
     public async Task AddDuplicate(FileRecordEntity duplicate, CancellationToken cancellationToken)

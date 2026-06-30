@@ -1,5 +1,5 @@
-using DuplicitiesFindAndRemove.Core;
 using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 
 namespace DuplicitiesFindAndRemove.Tests.Fakes;
 

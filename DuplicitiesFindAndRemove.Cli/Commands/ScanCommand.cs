@@ -1,6 +1,6 @@
 ﻿namespace DuplicitiesFindAndRemove.Cli.Commands;
 
-using DuplicitiesFindAndRemove.Core;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 using System;
 using System.Threading.Tasks;
 
@@ -39,10 +39,10 @@ internal sealed class ScanCommand
 
         var result = await scanner.ScanAsync(rootPath);
 
-        Console.WriteLine($"Processed: {result.ScannedFiles.Count}");
         Console.WriteLine($"New or updated: {result.NewOrUpdatedFilesCount}");
-        Console.WriteLine($"Candidates: {result.Candidates.Count}");
+        Console.WriteLine($"Skipped: {result.SkippedFilesCount}");
         Console.WriteLine($"Confirmed duplicates: {result.ConfirmedDuplicatesCount}");
+        Console.WriteLine();
 
         return ExitCode.Success;
     }

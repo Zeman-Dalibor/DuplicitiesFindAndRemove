@@ -1,20 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Old\**" />
-    <EmbeddedResource Remove="Old\**" />
-    <None Remove="Old\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="Old\**" />
+		<EmbeddedResource Remove="Old\**" />
+		<None Remove="Old\**" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Blake3" Version="0.0.0-alpha.0.100" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.36" />
-  </ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="DuplicitiesFindAndRemove.Tests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Blake3" Version="0.0.0-alpha.0.100" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.36" />
+	</ItemGroup>
 
 </Project>

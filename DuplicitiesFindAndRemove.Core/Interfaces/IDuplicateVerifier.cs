@@ -1,6 +1,6 @@
 using DuplicitiesFindAndRemove.Core.Database;
 
-namespace DuplicitiesFindAndRemove.Core;
+namespace DuplicitiesFindAndRemove.Core.Interfaces;
 
 public interface IDuplicateVerifier
 {

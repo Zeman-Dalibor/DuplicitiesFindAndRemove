@@ -1,4 +1,5 @@
 ﻿using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 
 namespace DuplicitiesFindAndRemove.Core;
 
@@ -13,13 +14,14 @@ public sealed class DuplicateScanner : IDuplicateScanner
         IFileSystemAbstraction fileSystem,
         IFileContentHasher hasher,
         IDuplicateIndex index,
-        IDuplicateVerifier verifier,
-        DuplicateDetectionOptions options)
+        IDuplicateVerifier verifier)
     {
         this.fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         this.hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
         this.index = index ?? throw new ArgumentNullException(nameof(index));
         this.verifier = verifier ?? throw new ArgumentNullException(nameof(verifier));
+
+        index.Initialize();
     }
 
     public async Task<DuplicateDetectionResult> ScanAsync(string rootPath, CancellationToken cancellationToken = default)
@@ -46,11 +48,12 @@ public sealed class DuplicateScanner : IDuplicateScanner
             // If the file already exists in the index, we skip further processing.
             if (existing is not null)
             {
+                result.SkippedFilesCount++;
                 continue;
             }
 
             long sizeBytes = fileSystem.GetFileSize(fullPath);
-            var record = existing ?? new FileRecordEntity
+            var record = new FileRecordEntity
             {
                 Path = fullPath,
                 SizeBytes = sizeBytes,
@@ -60,6 +63,8 @@ public sealed class DuplicateScanner : IDuplicateScanner
                 FullHash = null,
                 DuplicateOfFileId = null
             };
+
+            result.NewOrUpdatedFilesCount++;
 
             IReadOnlyCollection<FileRecordEntity> candidates;
             // Small files are fully hashed
@@ -85,7 +90,7 @@ public sealed class DuplicateScanner : IDuplicateScanner
 
             if (confirmed)
             {
-                result.ConfirmedDuplicates.Add(record);
+                result.ConfirmedDuplicatesCount++;
 
                 await index.AddDuplicate(record, cancellationToken);
             }
@@ -119,7 +124,22 @@ public sealed class DuplicateScanner : IDuplicateScanner
 
             if (candidate.SizeBytes != current.SizeBytes)
             {
-                continue;
+                throw new InvalidOperationException("Fatal error: duplicate verification requires files of the same size. Files: " 
+                                                    + candidate.Path + " and " + current.Path);
+            }
+
+            if (candidate.FullHash is null)
+            {
+                candidate.FullHash = await hasher.ComputeFullHashAsync(candidateFullPath, cancellationToken);
+                candidate.State = ScanState.FullHashCalculated;
+
+                await index.UpdateOrInsertAsync(candidate, cancellationToken);
+            }
+
+            if (current.FullHash == null)
+            {
+                current.FullHash = await hasher.ComputeFullHashAsync(currentFullPath, cancellationToken);
+                current.State = ScanState.FullHashCalculated;
             }
 
             // If both files have full hashes, we can compare them directly.

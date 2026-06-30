@@ -23,10 +23,12 @@ internal sealed class ReportCommand
             return ExitCode.NoDuplicatesFound;
         }
 
+        Console.WriteLine($"Found {duplicates.Count} duplicates:");
         foreach (var duplicate in duplicates)
         {
-            Console.WriteLine($"{duplicate.Id}: {duplicate.Path} -> duplicate of {duplicate.DuplicateOfFileId}");
+            Console.WriteLine($"{duplicate.Path} (id:{duplicate.Id}) -> duplicate of {duplicate.DuplicateOfFileId}");
         }
+        Console.WriteLine();
 
         // The join is translated to SQL, but the grouping is done in memory because EF Core
         // cannot translate a GroupBy that materializes whole entities into the result.
@@ -41,14 +43,16 @@ internal sealed class ReportCommand
 
         var groupedDuplicates = joinedDuplicates.GroupBy(arg => arg.Duplicate.DuplicateOfFileId);
 
+        Console.WriteLine($"Duplicate groups:");
         foreach (var group in groupedDuplicates)
         {
             Console.WriteLine($"Duplicate group for file {group.First().Original.Path} (ID: {group.Key}) - {group.Count()} duplicates:");
             foreach (var duplicate in group)
             {
-                Console.WriteLine($"  {duplicate.Duplicate.Id}: {duplicate.Duplicate.Path}");
+                Console.WriteLine($"  {duplicate.Duplicate.Path}");
             }
         }
+        Console.WriteLine();
 
         return ExitCode.Success;
     }

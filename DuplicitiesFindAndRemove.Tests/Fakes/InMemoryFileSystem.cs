@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text;
-using DuplicitiesFindAndRemove.Core;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 
 namespace DuplicitiesFindAndRemove.Tests.Fakes;
 

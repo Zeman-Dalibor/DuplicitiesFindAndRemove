@@ -13,15 +13,13 @@ public class DuplicateScannerTests
 
     private static DuplicateScanner CreateScanner(
         InMemoryFileSystem fileSystem,
-        InMemoryDuplicateIndex index,
-        DuplicateDetectionOptions? options = null)
+        InMemoryDuplicateIndex index)
     {
         return new DuplicateScanner(
             fileSystem,
             new FakeContentHasher(fileSystem),
             index,
-            new FakeDuplicateVerifier(fileSystem),
-            options ?? new DuplicateDetectionOptions());
+            new FakeDuplicateVerifier(fileSystem));
     }
 
     [Fact]
@@ -34,7 +32,7 @@ public class DuplicateScannerTests
 
         var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
 
-        Assert.Empty(result.ConfirmedDuplicates);
+        Assert.Equal(0, result.ConfirmedDuplicatesCount);
         Assert.Equal(2, index.Records.Count);
     }
 
@@ -48,8 +46,9 @@ public class DuplicateScannerTests
 
         var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
 
-        var duplicate = Assert.Single(result.ConfirmedDuplicates);
-        Assert.Equal(ScanState.ConfirmedDuplicate, duplicate.State);
+        Assert.Equal(1, result.ConfirmedDuplicatesCount);
+
+        var duplicate = index.Records.Single(record => record.State == ScanState.ConfirmedDuplicate);
         Assert.NotNull(duplicate.DuplicateOfFileId);
 
         var canonical = index.Records.Single(record => record.Id == duplicate.DuplicateOfFileId);
@@ -60,15 +59,14 @@ public class DuplicateScannerTests
     public async Task ScanAsync_DetectsDuplicate_ForIdenticalLargeFiles()
     {
         // A small threshold forces these files through the sample-hash (large file) path.
-        var options = new DuplicateDetectionOptions { SmallFileFullHashThresholdBytes = 4 };
         var fileSystem = new InMemoryFileSystem()
             .AddFile(PathFor("original.bin"), "large-content")
             .AddFile(PathFor("copy.bin"), "large-content");
         var index = new InMemoryDuplicateIndex();
 
-        var result = await CreateScanner(fileSystem, index, options).ScanAsync(Root);
+        var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
 
-        Assert.Single(result.ConfirmedDuplicates);
+        Assert.Equal(1, result.ConfirmedDuplicatesCount);
     }
 
     [Fact]
@@ -76,15 +74,14 @@ public class DuplicateScannerTests
     {
         // Same size means the same sample hash in the fake hasher, but the content differs,
         // so the byte-by-byte verification must reject the duplicate.
-        var options = new DuplicateDetectionOptions { SmallFileFullHashThresholdBytes = 4 };
         var fileSystem = new InMemoryFileSystem()
             .AddFile(PathFor("a.bin"), "AAAAAAAAAAAA")
             .AddFile(PathFor("b.bin"), "BBBBBBBBBBBB");
         var index = new InMemoryDuplicateIndex();
 
-        var result = await CreateScanner(fileSystem, index, options).ScanAsync(Root);
+        var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
 
-        Assert.Empty(result.ConfirmedDuplicates);
+        Assert.Equal(0, result.ConfirmedDuplicatesCount);
         Assert.Equal(2, index.Records.Count);
     }
 
@@ -98,7 +95,7 @@ public class DuplicateScannerTests
 
         var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
 
-        Assert.Empty(result.ConfirmedDuplicates);
+        Assert.Equal(0, result.ConfirmedDuplicatesCount);
         Assert.Single(index.Records);
     }
 
@@ -134,24 +131,22 @@ public class DuplicateScannerTests
         var verifier = new FakeDuplicateVerifier(fileSystem);
         var options = new DuplicateDetectionOptions();
 
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(null!, hasher, index, verifier, options));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, null!, index, verifier, options));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, null!, verifier, options));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, null!, options));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, verifier, null!));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(null!, hasher, index, verifier));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, null!, index, verifier));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, null!, verifier));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, null!));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, verifier));
     }
 
     [Fact]
     public void Constructor_Throws_ForInvalidOptions()
     {
         var fileSystem = new InMemoryFileSystem();
-        var options = new DuplicateDetectionOptions { SmallFileFullHashThresholdBytes = -1 };
 
         Assert.Throws<ArgumentOutOfRangeException>(() => new DuplicateScanner(
             fileSystem,
             new FakeContentHasher(fileSystem),
             new InMemoryDuplicateIndex(),
-            new FakeDuplicateVerifier(fileSystem),
-            options));
+            new FakeDuplicateVerifier(fileSystem)));
     }
 }

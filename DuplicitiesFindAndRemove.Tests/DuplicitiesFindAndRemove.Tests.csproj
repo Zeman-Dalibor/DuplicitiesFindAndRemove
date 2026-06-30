@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -19,6 +20,34 @@
   <ItemGroup>
     <ProjectReference Include="..\DuplicitiesFindAndRemove.Core\DuplicitiesFindAndRemove.Core.csproj" />
     <ProjectReference Include="..\DuplicitiesFindAndRemove.Cli\DuplicitiesFindAndRemove.Cli.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="TestData\LargeFiles\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="TestData\PruneSmallFilesErrors\a.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\PruneSmallFilesErrors\b.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\PruneSmallFilesErrors\d.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\PruneSmallFiles\TextFile1 - Copy.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\PruneSmallFiles\TextFile1.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\SimpleSmallFiles\TextFile1 - Copy.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\SimpleSmallFiles\TextFile1.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

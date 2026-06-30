@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DuplicitiesFindAndRemove.Core;
+namespace DuplicitiesFindAndRemove.Core.Interfaces;
 
 public interface IDuplicateScanner
 {
