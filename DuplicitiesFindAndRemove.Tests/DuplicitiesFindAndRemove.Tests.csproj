@@ -36,6 +36,9 @@
     <None Update="TestData\PruneSmallFilesErrors\d.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="TestData\PruneSmallFilesErrors\e.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="TestData\PruneSmallFiles\TextFile1 - Copy.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

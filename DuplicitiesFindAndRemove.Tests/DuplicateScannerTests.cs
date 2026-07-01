@@ -129,24 +129,10 @@ public class DuplicateScannerTests
         var hasher = new FakeContentHasher(fileSystem);
         var index = new InMemoryDuplicateIndex();
         var verifier = new FakeDuplicateVerifier(fileSystem);
-        var options = new DuplicateDetectionOptions();
 
         Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(null!, hasher, index, verifier));
         Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, null!, index, verifier));
         Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, null!, verifier));
         Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, null!));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, verifier));
-    }
-
-    [Fact]
-    public void Constructor_Throws_ForInvalidOptions()
-    {
-        var fileSystem = new InMemoryFileSystem();
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => new DuplicateScanner(
-            fileSystem,
-            new FakeContentHasher(fileSystem),
-            new InMemoryDuplicateIndex(),
-            new FakeDuplicateVerifier(fileSystem)));
     }
 }

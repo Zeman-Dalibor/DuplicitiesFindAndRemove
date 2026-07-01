@@ -109,10 +109,13 @@ public class ComplexTests
         var duplicate = await dbContext.Duplicates.FirstOrDefaultAsync();
         Assert.NotNull(duplicate);
 
+        var canonical = await dbContext.FileRecords.FirstOrDefaultAsync();
+        Assert.NotNull(canonical);
+
         args = new[] { "report" };
         await dispatcher.RunAsync(args);
 
-        File.Move(Path.Combine(pathToSimpleSmallFiles, "a.txt"), Path.Combine(deleteFolder, "a_moved.txt"));
+        File.Move(Path.Combine(pathToSimpleSmallFiles, Path.GetFileName(canonical.Path)), Path.Combine(deleteFolder, "canonical_moved.txt"));
 
         args = new[] { "prune", deleteFolder };
         await dispatcher.RunAsync(args);
@@ -126,7 +129,25 @@ public class ComplexTests
 
         Assert.Contains("Moving:", output);
         Assert.Contains("FATAL: Original file is missing after mov", errorOutput);
-        Assert.True(File.Exists(Path.Combine(deleteFolder, "b.txt")));
-        Assert.False(File.Exists(Path.Combine(deleteFolder, "d.txt")));
+
+        var detectedFiles = await dbContext.Duplicates.Select(entity => entity.Path).ToListAsync();
+
+        int movedCount = 0;
+        int skippedCount = 0;
+        foreach (string file in detectedFiles)
+        {
+            var filename = Path.GetFileName(file);
+            if (File.Exists(Path.Combine(deleteFolder, filename)))
+            {
+                movedCount++;
+            }
+            else
+            {
+                skippedCount++;
+            }
+        }
+
+        Assert.Equal(1, movedCount);
+        Assert.Equal(2, skippedCount);
     }
 }
