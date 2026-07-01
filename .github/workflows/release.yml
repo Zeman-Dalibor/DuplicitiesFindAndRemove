@@ -54,16 +54,6 @@ jobs:
           -p:IncludeAllContentForSelfExtract=true
           -o publish/win-x86
 
-      - name: Publish for Linux (linux-x86)
-        run: >
-          dotnet publish DuplicitiesFindAndRemove.Cli/DuplicitiesFindAndRemove.Cli.csproj
-          -c Release
-          -r linux-x86
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeAllContentForSelfExtract=true
-          -o publish/linux-x86
-
       - name: Run tests
         run: dotnet test DuplicitiesFindAndRemove.Tests/DuplicitiesFindAndRemove.Tests.csproj -c Release --logger "trx;LogFileName=test-results.trx"
 
@@ -82,11 +72,6 @@ jobs:
           cd publish/win-x86
           zip -r ../../DuplicitiesFindAndRemove-win-x86.zip .
 
-      - name: Zip Linux build
-        run: |
-          cd publish/linux-x86
-          zip -r ../../DuplicitiesFindAndRemove-linux-x86.zip .
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -97,4 +82,3 @@ jobs:
             DuplicitiesFindAndRemove-win-x64.zip
             DuplicitiesFindAndRemove-linux-x64.zip
             DuplicitiesFindAndRemove-win-x86.zip
-            DuplicitiesFindAndRemove-linux-x86.zip
