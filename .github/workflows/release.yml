@@ -1,0 +1,100 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: 'Release name (e.g. v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Publish for Windows (win-x64)
+        run: >
+          dotnet publish DuplicitiesFindAndRemove.Cli/DuplicitiesFindAndRemove.Cli.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeAllContentForSelfExtract=true
+          -o publish/win-x64
+
+      - name: Publish for Linux (linux-x64)
+        run: >
+          dotnet publish DuplicitiesFindAndRemove.Cli/DuplicitiesFindAndRemove.Cli.csproj
+          -c Release
+          -r linux-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeAllContentForSelfExtract=true
+          -o publish/linux-x64
+
+      - name: Publish for Windows (win-x86)
+        run: >
+          dotnet publish DuplicitiesFindAndRemove.Cli/DuplicitiesFindAndRemove.Cli.csproj
+          -c Release
+          -r win-x86
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeAllContentForSelfExtract=true
+          -o publish/win-x86
+
+      - name: Publish for Linux (linux-x86)
+        run: >
+          dotnet publish DuplicitiesFindAndRemove.Cli/DuplicitiesFindAndRemove.Cli.csproj
+          -c Release
+          -r linux-x86
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeAllContentForSelfExtract=true
+          -o publish/linux-x86
+
+      - name: Run tests
+        run: dotnet test DuplicitiesFindAndRemove.Tests/DuplicitiesFindAndRemove.Tests.csproj -c Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Zip Windows build
+        run: |
+          cd publish/win-x64
+          zip -r ../../DuplicitiesFindAndRemove-win-x64.zip .
+
+      - name: Zip Linux build
+        run: |
+          cd publish/linux-x64
+          zip -r ../../DuplicitiesFindAndRemove-linux-x64.zip .
+
+      - name: Zip Windows build
+        run: |
+          cd publish/win-x86
+          zip -r ../../DuplicitiesFindAndRemove-win-x86.zip .
+
+      - name: Zip Linux build
+        run: |
+          cd publish/linux-x86
+          zip -r ../../DuplicitiesFindAndRemove-linux-x86.zip .
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_name }}
+          name: ${{ inputs.release_name }}
+          generate_release_notes: true
+          files: |
+            DuplicitiesFindAndRemove-win-x64.zip
+            DuplicitiesFindAndRemove-linux-x64.zip
+            DuplicitiesFindAndRemove-win-x86.zip
+            DuplicitiesFindAndRemove-linux-x86.zip

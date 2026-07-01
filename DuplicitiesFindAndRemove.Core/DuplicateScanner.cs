@@ -34,73 +34,93 @@ public sealed class DuplicateScanner : IDuplicateScanner
 
         await foreach (string path in enumerableFiles)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            string fullPath = Path.GetFullPath(path);
-
-            if (!fileSystem.FileExists(fullPath))
+            try
             {
-                continue;
+                cancellationToken.ThrowIfCancellationRequested();
+
+                await ScanFile(path, result, cancellationToken);
             }
-
-            var existing = await index.GetByPathAsync(fullPath, cancellationToken);
-
-            // If the file already exists in the index, we skip further processing.
-            if (existing is not null)
+            catch (IOException ioException)
             {
-                result.SkippedFilesCount++;
-                continue;
+                Console.WriteLine($"Processing of file='{path}' failed:");
+                Console.WriteLine(ioException);
+                result.ErrorFilesCount++;
             }
-
-            long sizeBytes = fileSystem.GetFileSize(fullPath);
-            var record = new FileRecordEntity
+            catch (UnauthorizedAccessException unauthorizedAccessException)
             {
-                Path = fullPath,
-                SizeBytes = sizeBytes,
-                ModificationTimeStamp = fileSystem.GetLastWriteTimeUtcNanoseconds(fullPath),
-                State = ScanState.NotScanned,
-                SampleHash = null,
-                FullHash = null,
-                DuplicateOfFileId = null
-            };
-
-            result.NewOrUpdatedFilesCount++;
-
-            IReadOnlyCollection<FileRecordEntity> candidates;
-            // Small files are fully hashed
-            if (sizeBytes <= DuplicateDetectionOptions.SmallFileFullHashThresholdBytes)
-            {
-                byte[] fullHash = await hasher.ComputeFullHashAsync(fullPath, cancellationToken);
-                record.FullHash = fullHash;
-                record.State = ScanState.FullHashCalculated;
-
-                candidates = await index.GetBySizeAndFullHashAsync(sizeBytes, record.FullHash, cancellationToken);
-            }
-            // Large files are sample hashed
-            else
-            {
-                byte[] sampleHash = await hasher.ComputeSampleHashAsync(fullPath, cancellationToken);
-                record.SampleHash = sampleHash;
-                record.State = ScanState.SampleHashCalculated;
-
-                candidates = await index.GetBySizeAndSampleHashAsync(sizeBytes, record.SampleHash, cancellationToken);
-            }
-
-            bool confirmed = await ConfirmDuplicatesAsync(record, candidates, cancellationToken);
-
-            if (confirmed)
-            {
-                result.ConfirmedDuplicatesCount++;
-
-                await index.AddDuplicate(record, cancellationToken);
-            }
-            else
-            {
-                await index.AddCanonical(record, cancellationToken);
+                Console.WriteLine($"Processing of file='{path}' failed:");
+                Console.WriteLine(unauthorizedAccessException);
+                result.ErrorFilesCount++;
             }
         }
 
         return result;
+    }
+
+    private async Task ScanFile(string path, DuplicateDetectionResult result, CancellationToken cancellationToken)
+    {
+        string fullPath = Path.GetFullPath(path);
+
+        if (!fileSystem.FileExists(fullPath))
+        {
+            await Console.Error.WriteLineAsync($"File not found: {fullPath}");
+            result.ErrorFilesCount++;
+            return;
+        }
+
+        var existing = await index.GetByPathAsync(fullPath, cancellationToken);
+
+        // If the file already exists in the index, we skip further processing.
+        if (existing is not null)
+        {
+            result.SkippedFilesCount++;
+            return;
+        }
+
+        long sizeBytes = fileSystem.GetFileSize(fullPath);
+        var record = new FileRecordEntity
+        {
+            Path = fullPath,
+            SizeBytes = sizeBytes,
+            ModificationTimeStamp = fileSystem.GetLastWriteTimeUtcNanoseconds(fullPath),
+            State = ScanState.NotScanned,
+            SampleHash = null,
+            FullHash = null,
+            DuplicateOfFileId = null
+        };
+
+        IReadOnlyCollection<FileRecordEntity> candidates;
+        // Small files are fully hashed
+        if (sizeBytes <= DuplicateDetectionOptions.SmallFileFullHashThresholdBytes)
+        {
+            byte[] fullHash = await hasher.ComputeFullHashAsync(fullPath, cancellationToken);
+            record.FullHash = fullHash;
+            record.State = ScanState.FullHashCalculated;
+
+            candidates = await index.GetBySizeAndFullHashAsync(sizeBytes, record.FullHash, cancellationToken);
+        }
+        // Large files are sample hashed
+        else
+        {
+            byte[] sampleHash = await hasher.ComputeSampleHashAsync(fullPath, cancellationToken);
+            record.SampleHash = sampleHash;
+            record.State = ScanState.SampleHashCalculated;
+
+            candidates = await index.GetBySizeAndSampleHashAsync(sizeBytes, record.SampleHash, cancellationToken);
+        }
+
+        bool confirmed = await ConfirmDuplicatesAsync(record, candidates, cancellationToken);
+
+        if (confirmed)
+        {
+            result.ConfirmedDuplicatesCount++;
+            await index.AddDuplicate(record, cancellationToken);
+        }
+        else
+        {
+            result.NewOrUpdatedFilesCount++;
+            await index.AddCanonical(record, cancellationToken);
+        }
     }
 
     private async Task<bool> ConfirmDuplicatesAsync(
@@ -115,16 +135,16 @@ public sealed class DuplicateScanner : IDuplicateScanner
             string candidateFullPath = Path.GetFullPath(candidate.Path);
             string currentFullPath = Path.GetFullPath(current.Path);
 
-            if (candidate.Id == current.Id 
+            if (candidate.Id == current.Id
                 || string.Equals(candidateFullPath, currentFullPath, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException("Fatal error: duplicate verification requires two different physical files. Files: " 
+                throw new InvalidOperationException("Fatal error: duplicate verification requires two different physical files. Files: "
                                                     + candidate.Path + " and " + current.Path);
             }
 
             if (candidate.SizeBytes != current.SizeBytes)
             {
-                throw new InvalidOperationException("Fatal error: duplicate verification requires files of the same size. Files: " 
+                throw new InvalidOperationException("Fatal error: duplicate verification requires files of the same size. Files: "
                                                     + candidate.Path + " and " + current.Path);
             }
 

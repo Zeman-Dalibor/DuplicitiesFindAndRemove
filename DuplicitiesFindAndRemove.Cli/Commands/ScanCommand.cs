@@ -41,6 +41,7 @@ internal sealed class ScanCommand
 
         Console.WriteLine($"New or updated: {result.NewOrUpdatedFilesCount}");
         Console.WriteLine($"Skipped: {result.SkippedFilesCount}");
+        Console.WriteLine($"Errors: {result.ErrorFilesCount}");
         Console.WriteLine($"Confirmed duplicates: {result.ConfirmedDuplicatesCount}");
         Console.WriteLine();
 

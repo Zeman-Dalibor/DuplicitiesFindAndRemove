@@ -15,7 +15,7 @@ internal static class Program
     {
         var services = new ServiceCollection();
 
-        string dbPath = Path.Combine(AppContext.BaseDirectory, "duplicates.db");
+        string dbPath = Path.Combine(Environment.CurrentDirectory, "duplicates.db");
 
         services.AddApplicationServices(dbPath);
 
@@ -38,7 +38,7 @@ internal static class Program
         {
             var db = provider.GetRequiredService<SqliteInMemoryDatabase>();
 
-            Console.WriteLine("Persisting DB to disk...");
+            Console.WriteLine($"Persisting DB to disk ... {dbPath}");
             db.Persist();
 
             db.Dispose();
