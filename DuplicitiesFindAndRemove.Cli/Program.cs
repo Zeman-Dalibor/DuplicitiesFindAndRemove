@@ -4,6 +4,7 @@ using DuplicitiesFindAndRemove.Core.Database;
 using DuplicitiesFindAndRemove.Core.Hashing;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 using DuplicitiesFindAndRemove.Core.Verification;
+using DuplicitiesFindAndRemove.Core.Volume;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,6 +60,7 @@ internal static class Program
 
         // Core services
         services.AddSingleton<IFileSystemAbstraction, FileSystemAbstraction>();
+        services.AddSingleton<IVolumePathResolver, VolumePathResolver>();
         services.AddSingleton<IFileContentHasher, Blake3Hasher>();
         services.AddSingleton<IDuplicateVerifier, ByteCompareVerifier>();
         services.AddSingleton(new DuplicateDetectionOptions());
