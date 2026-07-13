@@ -143,4 +143,29 @@ public class DuplicateDbContextTests : IDisposable
             Assert.Equal("C:\\a", match.Path);
         }
     }
+
+    [Fact]
+    public async Task AddCanonical_PersistsVolumePathFields()
+    {
+        await using (var context = CreateContext())
+        {
+            await context.AddCanonical(new FileRecordEntity
+            {
+                Path = "C:\\files\\a.txt",
+                VolumeStableId = "partuuid:abc-123",
+                RelativePath = "files/a.txt",
+                SizeBytes = 10
+            }, default);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = CreateContext())
+        {
+            var found = await context.GetByPathAsync("C:\\files\\a.txt");
+
+            Assert.NotNull(found);
+            Assert.Equal("partuuid:abc-123", found!.VolumeStableId);
+            Assert.Equal("files/a.txt", found.RelativePath);
+        }
+    }
 }

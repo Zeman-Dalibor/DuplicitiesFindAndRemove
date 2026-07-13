@@ -84,6 +84,8 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         else
         {
             existing.SizeBytes = duplicate.SizeBytes;
+            existing.VolumeStableId = duplicate.VolumeStableId;
+            existing.RelativePath = duplicate.RelativePath;
             existing.SampleHash = duplicate.SampleHash;
             existing.FullHash = duplicate.FullHash;
             existing.DuplicateOfFileId = duplicate.DuplicateOfFileId ?? 0;
@@ -124,6 +126,8 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     private static DuplicateRecordEntity ToDuplicateRecord(FileRecordEntity source) => new()
     {
         Path = source.Path,
+        VolumeStableId = source.VolumeStableId,
+        RelativePath = source.RelativePath,
         SizeBytes = source.SizeBytes,
         SampleHash = source.SampleHash,
         FullHash = source.FullHash,
@@ -135,6 +139,8 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     private static FileRecordEntity ToFileRecord(DuplicateRecordEntity source) => new()
     {
         Path = source.Path,
+        VolumeStableId = source.VolumeStableId,
+        RelativePath = source.RelativePath,
         SizeBytes = source.SizeBytes,
         SampleHash = source.SampleHash,
         FullHash = source.FullHash,

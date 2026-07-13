@@ -11,6 +11,10 @@ public interface IFileRecord
 
     string Path { get; set; }
 
+    string? VolumeStableId { get; set; }
+
+    string? RelativePath { get; set; }
+
     long SizeBytes { get; set; }
 
     byte[]? SampleHash { get; set; }

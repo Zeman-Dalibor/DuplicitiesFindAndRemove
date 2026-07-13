@@ -14,6 +14,12 @@ public sealed class DuplicateRecordEntity : IFileRecord
     [MaxLength(ushort.MaxValue)]
     public string Path { get; set; } = string.Empty;
 
+    [MaxLength(128)]
+    public string? VolumeStableId { get; set; }
+
+    [MaxLength(ushort.MaxValue)]
+    public string? RelativePath { get; set; }
+
     public long SizeBytes { get; set; }
 
     public byte[]? SampleHash { get; set; }

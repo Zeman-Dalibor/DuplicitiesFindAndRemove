@@ -1,5 +1,6 @@
 ﻿using DuplicitiesFindAndRemove.Core.Database;
 using DuplicitiesFindAndRemove.Core.Interfaces;
+using DuplicitiesFindAndRemove.Core.Volume;
 
 namespace DuplicitiesFindAndRemove.Core;
 
@@ -9,17 +10,20 @@ public sealed class DuplicateScanner : IDuplicateScanner
     private readonly IFileContentHasher hasher;
     private readonly IDuplicateIndex index;
     private readonly IDuplicateVerifier verifier;
+    private readonly IVolumePathResolver volumePathResolver;
 
     public DuplicateScanner(
         IFileSystemAbstraction fileSystem,
         IFileContentHasher hasher,
         IDuplicateIndex index,
-        IDuplicateVerifier verifier)
+        IDuplicateVerifier verifier,
+        IVolumePathResolver volumePathResolver)
     {
         this.fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         this.hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
         this.index = index ?? throw new ArgumentNullException(nameof(index));
         this.verifier = verifier ?? throw new ArgumentNullException(nameof(verifier));
+        this.volumePathResolver = volumePathResolver ?? throw new ArgumentNullException(nameof(volumePathResolver));
 
         index.Initialize();
     }
@@ -78,9 +82,12 @@ public sealed class DuplicateScanner : IDuplicateScanner
         }
 
         long sizeBytes = fileSystem.GetFileSize(fullPath);
+        VolumePathInfo volumePath = volumePathResolver.Resolve(fullPath);
         var record = new FileRecordEntity
         {
             Path = fullPath,
+            VolumeStableId = volumePath.VolumeStableId,
+            RelativePath = volumePath.RelativePath,
             SizeBytes = sizeBytes,
             ModificationTimeStamp = fileSystem.GetLastWriteTimeUtcNanoseconds(fullPath),
             State = ScanState.NotScanned,
