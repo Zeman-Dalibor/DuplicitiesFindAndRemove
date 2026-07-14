@@ -72,5 +72,5 @@ public sealed class FileSystemAbstraction : IFileSystemAbstraction
     }
 
     public bool IsSameFilePath(string path1, string path2)
-        => string.Equals(Path.GetFullPath(path1), Path.GetFullPath(path2), StringComparison.OrdinalIgnoreCase);
+        => PathComparison.AreSamePath(path1, path2);
 }

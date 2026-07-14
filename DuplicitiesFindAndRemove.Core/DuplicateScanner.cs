@@ -143,7 +143,7 @@ public sealed class DuplicateScanner : IDuplicateScanner
             string currentFullPath = Path.GetFullPath(current.Path);
 
             if (candidate.Id == current.Id
-                || string.Equals(candidateFullPath, currentFullPath, StringComparison.OrdinalIgnoreCase))
+                || PathComparison.AreSamePath(candidateFullPath, currentFullPath))
             {
                 throw new InvalidOperationException("Fatal error: duplicate verification requires two different physical files. Files: "
                                                     + candidate.Path + " and " + current.Path);

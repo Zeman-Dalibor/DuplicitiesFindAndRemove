@@ -21,7 +21,7 @@ public sealed class ByteCompareVerifier : IDuplicateVerifier
         string firstFullPath = Path.GetFullPath(firstPath);
         string secondFullPath = Path.GetFullPath(secondPath);
 
-        if (string.Equals(firstFullPath, secondFullPath, StringComparison.OrdinalIgnoreCase))
+        if (PathComparison.AreSamePath(firstFullPath, secondFullPath))
         {
             throw new InvalidOperationException($"FATAL ERROR: verification requires two different physical files. Files: {firstPath}, {secondPath}.");
         }
