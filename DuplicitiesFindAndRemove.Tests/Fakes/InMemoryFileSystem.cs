@@ -10,6 +10,7 @@ namespace DuplicitiesFindAndRemove.Tests.Fakes;
 internal sealed class InMemoryFileSystem : IFileSystemAbstraction
 {
     private readonly Dictionary<string, byte[]> files = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> identities = new(StringComparer.OrdinalIgnoreCase);
 
     public InMemoryFileSystem AddFile(string path, string content)
         => AddFile(path, Encoding.UTF8.GetBytes(content));
@@ -17,6 +18,23 @@ internal sealed class InMemoryFileSystem : IFileSystemAbstraction
     public InMemoryFileSystem AddFile(string path, byte[] content)
     {
         files[Path.GetFullPath(path)] = content;
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a second path that references the same physical file as <paramref name="targetPath"/>,
+    /// mimicking a hard link or symlink: same content and the same physical identity.
+    /// </summary>
+    public InMemoryFileSystem AddHardLink(string linkPath, string targetPath)
+    {
+        string target = Path.GetFullPath(targetPath);
+        string link = Path.GetFullPath(linkPath);
+
+        files[link] = ReadAllBytes(target);
+
+        string identity = identities.TryGetValue(target, out string? existing) ? existing : target;
+        identities[target] = identity;
+        identities[link] = identity;
         return this;
     }
 
@@ -73,4 +91,17 @@ internal sealed class InMemoryFileSystem : IFileSystemAbstraction
 
     public bool IsSameFilePath(string path1, string path2)
         => string.Equals(Path.GetFullPath(path1), Path.GetFullPath(path2), StringComparison.OrdinalIgnoreCase);
+
+    public string? GetFileIdentity(string path)
+    {
+        string full = Path.GetFullPath(path);
+        if (!files.ContainsKey(full))
+        {
+            return null;
+        }
+
+        // Default identity is the normalized path, so distinct files are distinct.
+        // Hard links share the identity registered via AddHardLink.
+        return identities.TryGetValue(full, out string? identity) ? identity : full;
+    }
 }

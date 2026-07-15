@@ -71,6 +71,22 @@ public class DuplicateScannerTests
     }
 
     [Fact]
+    public async Task ScanAsync_DoesNotTreatHardLinkAsDuplicate()
+    {
+        // A hard link (or symlink) is the same physical file under a second path. It must
+        // never be confirmed as a duplicate, otherwise pruning could remove the only copy.
+        var fileSystem = new InMemoryFileSystem()
+            .AddFile(PathFor("original.txt"), "same-content")
+            .AddHardLink(PathFor("hardlink.txt"), PathFor("original.txt"));
+        var index = new InMemoryDuplicateIndex();
+
+        var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
+
+        Assert.Equal(0, result.ConfirmedDuplicatesCount);
+        Assert.DoesNotContain(index.Records, record => record.State == ScanState.ConfirmedDuplicate);
+    }
+
+    [Fact]
     public async Task ScanAsync_DoesNotConfirm_WhenSampleHashCollidesButContentDiffers()
     {
         // Same size means the same sample hash in the fake hasher, but the content differs,

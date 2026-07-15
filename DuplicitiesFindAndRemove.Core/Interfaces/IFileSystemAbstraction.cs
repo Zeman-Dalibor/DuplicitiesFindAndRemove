@@ -36,4 +36,12 @@ public interface IFileSystemAbstraction
         CancellationToken cancellationToken = default);
 
     bool IsSameFilePath(string path1, string path2);
+
+    /// <summary>
+    /// Returns a stable identifier of the physical file behind <paramref name="path"/>
+    /// (volume + file id on Windows, device + inode on Linux), or <c>null</c> when the
+    /// file system does not expose one. Two paths sharing the same non-null identity
+    /// refer to the same physical file (hard link, symlink, or alias).
+    /// </summary>
+    string? GetFileIdentity(string path);
 }

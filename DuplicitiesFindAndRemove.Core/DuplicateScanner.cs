@@ -142,11 +142,16 @@ public sealed class DuplicateScanner : IDuplicateScanner
             string candidateFullPath = Path.GetFullPath(candidate.Path);
             string currentFullPath = Path.GetFullPath(current.Path);
 
-            if (candidate.Id == current.Id
-                || PathComparison.AreSamePath(candidateFullPath, currentFullPath))
+            string? candidateIdentity = fileSystem.GetFileIdentity(candidateFullPath);
+            string? currentIdentity = fileSystem.GetFileIdentity(currentFullPath);
+
+            // A candidate that is physically the same file (hard link, symlink, junction, or
+            // case-only alias) is never a real duplicate. Marking it would risk deleting the
+            // only physical copy, so it is skipped rather than confirmed.
+            if (PhysicalFileIdentity.AreSamePhysicalFile(
+                    currentIdentity, candidateIdentity, currentFullPath, candidateFullPath))
             {
-                throw new InvalidOperationException("Fatal error: duplicate verification requires two different physical files. Files: "
-                                                    + candidate.Path + " and " + current.Path);
+                continue;
             }
 
             if (candidate.SizeBytes != current.SizeBytes)
