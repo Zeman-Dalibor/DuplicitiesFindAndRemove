@@ -1,7 +1,8 @@
-namespace DuplicitiesFindAndRemove.Core.Volume;
+namespace DuplicitiesFindAndRemove.Tests.Fakes;
 
 /// <summary>
 /// Matches portable file locations against a directory prefix within the same disk.
+/// Used by <see cref="InMemoryDuplicateIndex"/> to mirror production index filtering in tests.
 /// </summary>
 internal static class IndexPathFilter
 {
