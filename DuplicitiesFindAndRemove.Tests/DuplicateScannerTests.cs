@@ -20,7 +20,8 @@ public class DuplicateScannerTests
             new FakeContentHasher(fileSystem),
             index,
             new FakeDuplicateVerifier(fileSystem),
-            new FakeVolumePathResolver());
+            new FakeVolumePathResolver(),
+            new FakeDiskRegistry());
     }
 
     [Fact]
@@ -108,7 +109,8 @@ public class DuplicateScannerTests
         string path = PathFor("existing.txt");
         var fileSystem = new InMemoryFileSystem().AddFile(path, "content");
         var index = new InMemoryDuplicateIndex();
-        await index.AddCanonical(new FileRecordEntity { Path = Path.GetFullPath(path), SizeBytes = 7 }, default);
+        var location = new FakeVolumePathResolver().Resolve(Path.GetFullPath(path));
+        await index.AddCanonical(new FileRecordEntity { DiskId = location.DiskId, RelativePath = location.RelativePath, SizeBytes = 7 }, default);
 
         var result = await CreateScanner(fileSystem, index).ScanAsync(Root);
 
@@ -150,7 +152,7 @@ public class DuplicateScannerTests
 
         var record = Assert.Single(index.Records);
         Assert.EndsWith("folder/file.txt", record.RelativePath, StringComparison.Ordinal);
-        Assert.False(string.IsNullOrWhiteSpace(record.VolumeStableId));
+        Assert.NotEqual(Guid.Empty, record.DiskId);
     }
 
     [Fact]
@@ -161,11 +163,13 @@ public class DuplicateScannerTests
         var index = new InMemoryDuplicateIndex();
         var verifier = new FakeDuplicateVerifier(fileSystem);
         var volumePathResolver = new FakeVolumePathResolver();
+        var diskRegistry = new FakeDiskRegistry();
 
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(null!, hasher, index, verifier, volumePathResolver));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, null!, index, verifier, volumePathResolver));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, null!, verifier, volumePathResolver));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, null!, volumePathResolver));
-        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, verifier, null!));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(null!, hasher, index, verifier, volumePathResolver, diskRegistry));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, null!, index, verifier, volumePathResolver, diskRegistry));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, null!, verifier, volumePathResolver, diskRegistry));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, null!, volumePathResolver, diskRegistry));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, verifier, null!, diskRegistry));
+        Assert.Throws<ArgumentNullException>(() => new DuplicateScanner(fileSystem, hasher, index, verifier, volumePathResolver, null!));
     }
 }

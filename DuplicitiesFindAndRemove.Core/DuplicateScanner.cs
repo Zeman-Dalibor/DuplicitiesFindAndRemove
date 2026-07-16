@@ -14,19 +14,22 @@ public sealed class DuplicateScanner : IDuplicateScanner
     private readonly IDuplicateIndex index;
     private readonly IDuplicateVerifier verifier;
     private readonly IVolumePathResolver volumePathResolver;
+    private readonly IDiskRegistry diskRegistry;
 
     public DuplicateScanner(
         IFileSystemAbstraction fileSystem,
         IFileContentHasher hasher,
         IDuplicateIndex index,
         IDuplicateVerifier verifier,
-        IVolumePathResolver volumePathResolver)
+        IVolumePathResolver volumePathResolver,
+        IDiskRegistry diskRegistry)
     {
         this.fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
         this.hasher = hasher ?? throw new ArgumentNullException(nameof(hasher));
         this.index = index ?? throw new ArgumentNullException(nameof(index));
         this.verifier = verifier ?? throw new ArgumentNullException(nameof(verifier));
         this.volumePathResolver = volumePathResolver ?? throw new ArgumentNullException(nameof(volumePathResolver));
+        this.diskRegistry = diskRegistry ?? throw new ArgumentNullException(nameof(diskRegistry));
 
         index.Initialize();
     }
@@ -86,7 +89,10 @@ public sealed class DuplicateScanner : IDuplicateScanner
     {
         string fullPath = Path.GetFullPath(path);
 
-        var existing = await index.GetByPathAsync(fullPath, cancellationToken);
+        // The portable location (disk GUID + relative path) is the identity stored in the index.
+        FileLocation location = volumePathResolver.Resolve(fullPath);
+
+        var existing = await index.GetByLocationAsync(location, cancellationToken);
 
         // If the file already exists in the index, we skip further processing.
         if (existing is not null)
@@ -105,12 +111,10 @@ public sealed class DuplicateScanner : IDuplicateScanner
         }
 
         long sizeBytes = metadata.Value.SizeBytes;
-        VolumePathInfo volumePath = volumePathResolver.Resolve(fullPath);
         var record = new FileRecordEntity
         {
-            Path = fullPath,
-            VolumeStableId = volumePath.VolumeStableId,
-            RelativePath = volumePath.RelativePath,
+            DiskId = location.DiskId,
+            RelativePath = location.RelativePath,
             SizeBytes = sizeBytes,
             ModificationTimeStamp = metadata.Value.LastWriteTimeUtcNanoseconds,
             State = ScanState.NotScanned,
@@ -139,7 +143,7 @@ public sealed class DuplicateScanner : IDuplicateScanner
             candidates = await index.GetBySizeAndSampleHashAsync(sizeBytes, record.SampleHash, cancellationToken);
         }
 
-        bool confirmed = await ConfirmDuplicatesAsync(record, candidates, cancellationToken);
+        bool confirmed = await ConfirmDuplicatesAsync(record, fullPath, candidates, cancellationToken);
 
         if (confirmed)
         {
@@ -155,6 +159,7 @@ public sealed class DuplicateScanner : IDuplicateScanner
 
     private async Task<bool> ConfirmDuplicatesAsync(
         FileRecordEntity current,
+        string currentFullPath,
         IReadOnlyCollection<FileRecordEntity> candidates,
         CancellationToken cancellationToken)
     {
@@ -162,8 +167,14 @@ public sealed class DuplicateScanner : IDuplicateScanner
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            string candidateFullPath = Path.GetFullPath(candidate.Path);
-            string currentFullPath = Path.GetFullPath(current.Path);
+            // The absolute path of a candidate is reconstructed from its portable location. If the
+            // candidate's disk is not currently mounted, it cannot be verified and is skipped, which
+            // is safe: an unverified file is never confirmed as a duplicate.
+            string? candidateFullPath = diskRegistry.TryGetAbsolutePath(candidate.Location);
+            if (candidateFullPath is null)
+            {
+                continue;
+            }
 
             string? candidateIdentity = fileSystem.GetFileIdentity(candidateFullPath);
             string? currentIdentity = fileSystem.GetFileIdentity(currentFullPath);
@@ -180,7 +191,7 @@ public sealed class DuplicateScanner : IDuplicateScanner
             if (candidate.SizeBytes != current.SizeBytes)
             {
                 throw new InvalidOperationException("Fatal error: duplicate verification requires files of the same size. Files: "
-                                                    + candidate.Path + " and " + current.Path);
+                                                    + candidateFullPath + " and " + currentFullPath);
             }
 
             if (candidate.FullHash is null)

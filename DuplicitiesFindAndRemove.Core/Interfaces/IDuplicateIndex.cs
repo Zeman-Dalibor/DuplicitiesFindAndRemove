@@ -1,4 +1,5 @@
 using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Volume;
 
 namespace DuplicitiesFindAndRemove.Core.Interfaces;
 
@@ -6,7 +7,7 @@ public interface IDuplicateIndex
 {
     void Initialize();
 
-    Task<FileRecordEntity?> GetByPathAsync(string path, CancellationToken cancellationToken = default);
+    Task<FileRecordEntity?> GetByLocationAsync(FileLocation location, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyCollection<FileRecordEntity>> GetBySize(long sizeBytes, CancellationToken cancellationToken);
 
@@ -14,7 +15,7 @@ public interface IDuplicateIndex
         long sizeBytes,
         byte[] sampleHash,
         CancellationToken cancellationToken = default);
-    
+
     Task<IReadOnlyCollection<FileRecordEntity>> GetBySizeAndFullHashAsync(long sizeBytes, byte[] fullHash, CancellationToken cancellationToken);
 
     Task UpdateOrInsertAsync(FileRecordEntity record, CancellationToken cancellationToken = default);

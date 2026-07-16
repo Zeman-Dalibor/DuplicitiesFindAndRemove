@@ -13,7 +13,6 @@
 	<ItemGroup>
 		<PackageReference Include="Blake3" Version="0.0.0-alpha.0.100" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.36" />
-		<PackageReference Include="System.Management" Version="6.0.2" />
 	</ItemGroup>
 
 </Project>

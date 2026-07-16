@@ -1,4 +1,5 @@
 ﻿using DuplicitiesFindAndRemove.Core.Interfaces;
+using DuplicitiesFindAndRemove.Core.Volume;
 using Microsoft.EntityFrameworkCore;
 
 namespace DuplicitiesFindAndRemove.Core.Database;
@@ -32,7 +33,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
 
             // Indexes backing the lookups below. Without them every candidate query does a full
             // table scan, which degrades to quadratic complexity on large file sets.
-            entity.HasIndex(record => record.RelativePath);
+            entity.HasIndex(record => new { record.DiskId, record.RelativePath });
             entity.HasIndex(record => record.SizeBytes);
             entity.HasIndex(record => new { record.SizeBytes, record.SampleHash });
             entity.HasIndex(record => new { record.SizeBytes, record.FullHash });
@@ -42,23 +43,26 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         {
             entity.ToTable("Duplicates");
 
-            // Duplicate lookups are keyed by path when deciding whether a file is already known.
-            entity.HasIndex(record => record.RelativePath);
+            // Duplicate lookups are keyed by location when deciding whether a file is already known.
+            entity.HasIndex(record => new { record.DiskId, record.RelativePath });
         });
     }
 
-    public async Task<FileRecordEntity?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
+    public async Task<FileRecordEntity?> GetByLocationAsync(FileLocation location, CancellationToken cancellationToken = default)
     {
+        Guid diskId = location.DiskId;
+        string relativePath = location.RelativePath;
+
         var canonical = await FileRecords
-            .FirstOrDefaultAsync(entity => entity.Path == path, cancellationToken);
+            .FirstOrDefaultAsync(entity => entity.DiskId == diskId && entity.RelativePath == relativePath, cancellationToken);
         if (canonical is not null)
         {
             return canonical;
         }
 
-        // A path already recorded as a duplicate is also "known" and must not be rescanned.
+        // A location already recorded as a duplicate is also "known" and must not be rescanned.
         var duplicate = await Duplicates
-            .FirstOrDefaultAsync(entity => entity.Path == path, cancellationToken);
+            .FirstOrDefaultAsync(entity => entity.DiskId == diskId && entity.RelativePath == relativePath, cancellationToken);
 
         return duplicate is null ? null : ToFileRecord(duplicate);
     }
@@ -100,7 +104,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         }
 
         var existing = await Duplicates
-            .FirstOrDefaultAsync(entity => entity.Path == duplicate.Path, cancellationToken);
+            .FirstOrDefaultAsync(entity => entity.DiskId == duplicate.DiskId && entity.RelativePath == duplicate.RelativePath, cancellationToken);
 
         if (existing is null)
         {
@@ -109,7 +113,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         else
         {
             existing.SizeBytes = duplicate.SizeBytes;
-            existing.VolumeStableId = duplicate.VolumeStableId;
+            existing.DiskId = duplicate.DiskId;
             existing.RelativePath = duplicate.RelativePath;
             existing.SampleHash = duplicate.SampleHash;
             existing.FullHash = duplicate.FullHash;
@@ -146,7 +150,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         if (Entry(record).State == EntityState.Detached)
         {
             var existing = await FileRecords
-                .FirstOrDefaultAsync(entity => entity.Path == record.Path, cancellationToken);
+                .FirstOrDefaultAsync(entity => entity.DiskId == record.DiskId && entity.RelativePath == record.RelativePath, cancellationToken);
 
             if (existing is null)
             {
@@ -163,8 +167,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
 
     private static DuplicateRecordEntity ToDuplicateRecord(FileRecordEntity source) => new()
     {
-        Path = source.Path,
-        VolumeStableId = source.VolumeStableId,
+        DiskId = source.DiskId,
         RelativePath = source.RelativePath,
         SizeBytes = source.SizeBytes,
         SampleHash = source.SampleHash,
@@ -176,8 +179,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
 
     private static FileRecordEntity ToFileRecord(DuplicateRecordEntity source) => new()
     {
-        Path = source.Path,
-        VolumeStableId = source.VolumeStableId,
+        DiskId = source.DiskId,
         RelativePath = source.RelativePath,
         SizeBytes = source.SizeBytes,
         SampleHash = source.SampleHash,

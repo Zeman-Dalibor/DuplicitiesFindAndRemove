@@ -1,4 +1,3 @@
-using DuplicitiesFindAndRemove.Core.Database;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 
 namespace DuplicitiesFindAndRemove.Tests.Fakes;
@@ -21,7 +20,4 @@ internal sealed class FakeDuplicateVerifier : IDuplicateVerifier
         byte[] contentB = fileSystem.ReadAllBytes(pathB);
         return Task.FromResult(contentA.SequenceEqual(contentB));
     }
-
-    public Task<bool> HasSameContentAsync(FileRecordEntity fileA, FileRecordEntity fileB, CancellationToken cancellationToken = default)
-        => HasSameContentAsync(fileA.Path, fileB.Path, cancellationToken);
 }

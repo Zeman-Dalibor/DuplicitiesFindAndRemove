@@ -1,4 +1,5 @@
 using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Volume;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -7,6 +8,9 @@ namespace DuplicitiesFindAndRemove.Tests;
 
 public class DuplicateDbContextTests : IDisposable
 {
+    private static readonly Guid DiskA = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid DiskB = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
     private readonly SqliteConnection connection;
     private readonly DbContextOptions<DuplicateDbContext> options;
 
@@ -32,17 +36,17 @@ public class DuplicateDbContextTests : IDisposable
     private DuplicateDbContext CreateContext() => new(options);
 
     [Fact]
-    public async Task GetByPathAsync_ReturnsRecord_WhenPresent()
+    public async Task GetByLocationAsync_ReturnsRecord_WhenPresent()
     {
         await using (var context = CreateContext())
         {
-            await context.AddCanonical(new FileRecordEntity { Path = "C:\\files\\a.txt", SizeBytes = 10 }, default);
+            await context.AddCanonical(new FileRecordEntity { DiskId = DiskA, RelativePath = "files/a.txt", SizeBytes = 10 }, default);
             await context.SaveChangesAsync();
         }
 
         await using (var context = CreateContext())
         {
-            var found = await context.GetByPathAsync("C:\\files\\a.txt");
+            var found = await context.GetByLocationAsync(new FileLocation(DiskA, "files/a.txt"));
 
             Assert.NotNull(found);
             Assert.Equal(10, found!.SizeBytes);
@@ -50,11 +54,27 @@ public class DuplicateDbContextTests : IDisposable
     }
 
     [Fact]
-    public async Task GetByPathAsync_ReturnsNull_WhenMissing()
+    public async Task GetByLocationAsync_ReturnsNull_WhenMissing()
     {
         await using var context = CreateContext();
 
-        Assert.Null(await context.GetByPathAsync("C:\\missing.txt"));
+        Assert.Null(await context.GetByLocationAsync(new FileLocation(DiskA, "missing.txt")));
+    }
+
+    [Fact]
+    public async Task GetByLocationAsync_DistinguishesByDisk()
+    {
+        await using (var context = CreateContext())
+        {
+            await context.AddCanonical(new FileRecordEntity { DiskId = DiskA, RelativePath = "files/a.txt", SizeBytes = 10 }, default);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = CreateContext())
+        {
+            // Same relative path, different disk: must not match.
+            Assert.Null(await context.GetByLocationAsync(new FileLocation(DiskB, "files/a.txt")));
+        }
     }
 
     [Fact]
@@ -62,7 +82,7 @@ public class DuplicateDbContextTests : IDisposable
     {
         await using (var context = CreateContext())
         {
-            await context.UpdateOrInsertAsync(new FileRecordEntity { Path = "C:\\files\\a.txt", SizeBytes = 1 });
+            await context.UpdateOrInsertAsync(new FileRecordEntity { DiskId = DiskA, RelativePath = "files/a.txt", SizeBytes = 1 });
             await context.SaveChangesAsync();
         }
 
@@ -78,7 +98,7 @@ public class DuplicateDbContextTests : IDisposable
         long id;
         await using (var context = CreateContext())
         {
-            var record = new FileRecordEntity { Path = "C:\\files\\a.txt", SizeBytes = 1 };
+            var record = new FileRecordEntity { DiskId = DiskA, RelativePath = "files/a.txt", SizeBytes = 1 };
             await context.AddCanonical(record, default);
             await context.SaveChangesAsync();
             id = record.Id;
@@ -89,7 +109,8 @@ public class DuplicateDbContextTests : IDisposable
             await context.UpdateOrInsertAsync(new FileRecordEntity
             {
                 Id = id,
-                Path = "C:\\files\\a.txt",
+                DiskId = DiskA,
+                RelativePath = "files/a.txt",
                 SizeBytes = 999,
                 State = ScanState.Canonical
             });
@@ -110,8 +131,8 @@ public class DuplicateDbContextTests : IDisposable
         byte[] hash = { 1, 2, 3, 4 };
         await using (var context = CreateContext())
         {
-            await context.AddCanonical(new FileRecordEntity { Path = "C:\\a", SizeBytes = 100, FullHash = hash }, default);
-            await context.AddCanonical(new FileRecordEntity { Path = "C:\\b", SizeBytes = 100, FullHash = new byte[] { 9 } }, default);
+            await context.AddCanonical(new FileRecordEntity { DiskId = DiskA, RelativePath = "a", SizeBytes = 100, FullHash = hash }, default);
+            await context.AddCanonical(new FileRecordEntity { DiskId = DiskA, RelativePath = "b", SizeBytes = 100, FullHash = new byte[] { 9 } }, default);
             await context.SaveChangesAsync();
         }
 
@@ -120,7 +141,7 @@ public class DuplicateDbContextTests : IDisposable
             var matches = await context.GetBySizeAndFullHashAsync(100, hash, default);
 
             var match = Assert.Single(matches);
-            Assert.Equal("C:\\a", match.Path);
+            Assert.Equal("a", match.RelativePath);
         }
     }
 
@@ -130,8 +151,8 @@ public class DuplicateDbContextTests : IDisposable
         byte[] hash = { 5, 6, 7 };
         await using (var context = CreateContext())
         {
-            await context.AddCanonical(new FileRecordEntity { Path = "C:\\a", SizeBytes = 200, SampleHash = hash }, default);
-            await context.AddCanonical(new FileRecordEntity { Path = "C:\\b", SizeBytes = 999, SampleHash = hash }, default);
+            await context.AddCanonical(new FileRecordEntity { DiskId = DiskA, RelativePath = "a", SizeBytes = 200, SampleHash = hash }, default);
+            await context.AddCanonical(new FileRecordEntity { DiskId = DiskA, RelativePath = "b", SizeBytes = 999, SampleHash = hash }, default);
             await context.SaveChangesAsync();
         }
 
@@ -140,19 +161,18 @@ public class DuplicateDbContextTests : IDisposable
             var matches = await context.GetBySizeAndSampleHashAsync(200, hash);
 
             var match = Assert.Single(matches);
-            Assert.Equal("C:\\a", match.Path);
+            Assert.Equal("a", match.RelativePath);
         }
     }
 
     [Fact]
-    public async Task AddCanonical_PersistsVolumePathFields()
+    public async Task AddCanonical_PersistsLocationFields()
     {
         await using (var context = CreateContext())
         {
             await context.AddCanonical(new FileRecordEntity
             {
-                Path = "C:\\files\\a.txt",
-                VolumeStableId = "partuuid:abc-123",
+                DiskId = DiskA,
                 RelativePath = "files/a.txt",
                 SizeBytes = 10
             }, default);
@@ -161,10 +181,10 @@ public class DuplicateDbContextTests : IDisposable
 
         await using (var context = CreateContext())
         {
-            var found = await context.GetByPathAsync("C:\\files\\a.txt");
+            var found = await context.GetByLocationAsync(new FileLocation(DiskA, "files/a.txt"));
 
             Assert.NotNull(found);
-            Assert.Equal("partuuid:abc-123", found!.VolumeStableId);
+            Assert.Equal(DiskA, found!.DiskId);
             Assert.Equal("files/a.txt", found.RelativePath);
         }
     }

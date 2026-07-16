@@ -1,5 +1,6 @@
 using DuplicitiesFindAndRemove.Core.Database;
 using DuplicitiesFindAndRemove.Core.Interfaces;
+using DuplicitiesFindAndRemove.Core.Volume;
 
 namespace DuplicitiesFindAndRemove.Tests.Fakes;
 
@@ -13,8 +14,8 @@ internal sealed class InMemoryDuplicateIndex : IDuplicateIndex
 
     public IReadOnlyList<FileRecordEntity> Records => records;
 
-    public Task<FileRecordEntity?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
-        => Task.FromResult(records.FirstOrDefault(record => record.Path == path));
+    public Task<FileRecordEntity?> GetByLocationAsync(FileLocation location, CancellationToken cancellationToken = default)
+        => Task.FromResult(records.FirstOrDefault(record => record.Location == location));
 
     public async Task<IReadOnlyCollection<FileRecordEntity>> GetBySize(long sizeBytes, CancellationToken cancellationToken)
     {

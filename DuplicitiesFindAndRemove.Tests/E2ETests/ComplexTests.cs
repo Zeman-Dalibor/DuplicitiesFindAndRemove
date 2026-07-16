@@ -1,5 +1,6 @@
 ﻿using DuplicitiesFindAndRemove.Cli;
 using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -19,6 +20,11 @@ public class ComplexTests
     [Fact]
     public async Task DispatcherScanTests()
     {
+        if (!TestEnvironment.IsDriveRootWritable(Environment.CurrentDirectory))
+        {
+            return; // The placeholder identity file requires write access to the drive root.
+        }
+
         string pathToSimpleSmallFiles = Path.Combine(Environment.CurrentDirectory, "TestData", "SimpleSmallFiles");
 
         var sw = new StringWriter();
@@ -45,6 +51,11 @@ public class ComplexTests
     [Fact]
     public async Task PruneTests()
     {
+        if (!TestEnvironment.IsDriveRootWritable(Environment.CurrentDirectory))
+        {
+            return; // The placeholder identity file requires write access to the drive root.
+        }
+
         string pathToSimpleSmallFiles = Path.Combine(Environment.CurrentDirectory, "TestData", "PruneSmallFiles");
         string deleteFolder = Path.Combine(Environment.CurrentDirectory, "ToDelete");
         if (Directory.Exists(deleteFolder))
@@ -85,6 +96,11 @@ public class ComplexTests
     [Fact]
     public async Task PruneCanonicalMovedErrorTests()
     {
+        if (!TestEnvironment.IsDriveRootWritable(Environment.CurrentDirectory))
+        {
+            return; // The placeholder identity file requires write access to the drive root.
+        }
+
         string pathToSimpleSmallFiles = Path.Combine(Environment.CurrentDirectory, "TestData", "PruneSmallFilesErrors");
         string deleteFolder = Path.Combine(Environment.CurrentDirectory, "ToDelete");
         if (Directory.Exists(deleteFolder))
@@ -115,8 +131,12 @@ public class ComplexTests
         args = new[] { "report" };
         await dispatcher.RunAsync(args);
 
+        var diskRegistry = serviceProvider.GetRequiredService<IDiskRegistry>();
+
         // Move of canonical - this will cause an error during prune, as the canonical file is missing
-        File.Move(Path.Combine(pathToSimpleSmallFiles, Path.GetFileName(canonical.Path)), Path.Combine(deleteFolder, "canonical_moved.txt"));
+        string? canonicalPath = diskRegistry.TryGetAbsolutePath(canonical!.Location);
+        Assert.NotNull(canonicalPath);
+        File.Move(canonicalPath!, Path.Combine(deleteFolder, "canonical_moved.txt"));
 
         args = new[] { "prune", deleteFolder };
         await dispatcher.RunAsync(args);
@@ -130,14 +150,15 @@ public class ComplexTests
 
         Assert.Contains("FATAL: Original file is missing before moving", errorOutput);
 
-        var detectedFiles = await dbContext.Duplicates.Select(entity => entity.Path).ToListAsync();
+        var detectedDuplicates = await dbContext.Duplicates.ToListAsync();
 
         int movedCount = 0;
         int skippedCount = 0;
-        foreach (string file in detectedFiles)
+        foreach (var dup in detectedDuplicates)
         {
-            var filename = Path.GetFileName(file);
-            if (File.Exists(Path.Combine(deleteFolder, filename)))
+            string? dupPath = diskRegistry.TryGetAbsolutePath(dup.Location);
+            string? filename = dupPath is null ? null : Path.GetFileName(dupPath);
+            if (filename is not null && File.Exists(Path.Combine(deleteFolder, filename)))
             {
                 movedCount++;
             }

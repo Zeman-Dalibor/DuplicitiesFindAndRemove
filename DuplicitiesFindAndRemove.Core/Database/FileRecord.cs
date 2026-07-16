@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using DuplicitiesFindAndRemove.Core.Volume;
 
 namespace DuplicitiesFindAndRemove.Core.Database;
 
@@ -8,14 +9,10 @@ public sealed class FileRecordEntity : IFileRecord
 {
     public long Id { get; set; }
 
-    [MaxLength(ushort.MaxValue)]
-    public string Path { get; set; } = string.Empty;
-
-    [MaxLength(128)]
-    public string? VolumeStableId { get; set; }
+    public Guid DiskId { get; set; }
 
     [MaxLength(ushort.MaxValue)]
-    public string? RelativePath { get; set; }
+    public string RelativePath { get; set; } = string.Empty;
 
     public long SizeBytes { get; set; }
 
@@ -35,6 +32,13 @@ public sealed class FileRecordEntity : IFileRecord
     public bool HasFullHash => FullHash is { Length: > 0 };
 
     public bool IsDuplicate => DuplicateOfFileId.HasValue;
+
+    /// <summary>
+    /// Portable location of the file (disk GUID + relative path), assembled from the two stored
+    /// columns. The absolute path is not stored and must be reconstructed via the disk registry.
+    /// </summary>
+    [NotMapped]
+    public FileLocation Location => new(DiskId, RelativePath);
 }
 
 public enum ScanState

@@ -93,12 +93,4 @@ public sealed class ByteCompareVerifier : IDuplicateVerifier
             ArrayPool<byte>.Shared.Return(secondBuffer, clearArray: true);
         }
     }
-
-    public async Task<bool> HasSameContentAsync(FileRecordEntity fileA, FileRecordEntity fileB, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(fileA);
-        ArgumentNullException.ThrowIfNull(fileB);
-
-        return await HasSameContentAsync(fileA.Path, fileB.Path, cancellationToken);
-    }
 }

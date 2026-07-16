@@ -62,6 +62,8 @@ internal static class Program
 
         // Core services
         services.AddSingleton<IFileSystemAbstraction, FileSystemAbstraction>();
+        services.AddSingleton<IDiskIdentityProvider, DiskIdentityProvider>();
+        services.AddSingleton<IDiskRegistry, DiskRegistry>();
         services.AddSingleton<IVolumePathResolver, VolumePathResolver>();
         services.AddSingleton<IFileContentHasher, Blake3Hasher>();
         services.AddSingleton<IDuplicateVerifier, ByteCompareVerifier>();

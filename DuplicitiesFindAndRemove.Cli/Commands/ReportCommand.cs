@@ -1,4 +1,5 @@
 ﻿using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace DuplicitiesFindAndRemove.Cli.Commands;
@@ -6,10 +7,12 @@ namespace DuplicitiesFindAndRemove.Cli.Commands;
 internal sealed class ReportCommand
 {
     private readonly DuplicateDbContext db;
+    private readonly IDiskRegistry diskRegistry;
 
-    public ReportCommand(DuplicateDbContext db)
+    public ReportCommand(DuplicateDbContext db, IDiskRegistry diskRegistry)
     {
         this.db = db;
+        this.diskRegistry = diskRegistry;
     }
 
     public async Task<ExitCode> ExecuteAsync(string[] args)
@@ -26,7 +29,7 @@ internal sealed class ReportCommand
         Console.WriteLine($"Found {duplicates.Count} duplicates:");
         foreach (var duplicate in duplicates)
         {
-            Console.WriteLine($"{duplicate.Path} (id:{duplicate.Id}) -> duplicate of {duplicate.DuplicateOfFileId}");
+            Console.WriteLine($"{Describe(duplicate)} (id:{duplicate.Id}) -> duplicate of {duplicate.DuplicateOfFileId}");
         }
         Console.WriteLine();
 
@@ -46,14 +49,19 @@ internal sealed class ReportCommand
         Console.WriteLine($"Duplicate groups:");
         foreach (var group in groupedDuplicates)
         {
-            Console.WriteLine($"Duplicate group for file {group.First().Original.Path} (ID: {group.Key}) - {group.Count()} duplicates:");
+            Console.WriteLine($"Duplicate group for file {Describe(group.First().Original)} (ID: {group.Key}) - {group.Count()} duplicates:");
             foreach (var duplicate in group)
             {
-                Console.WriteLine($"  {duplicate.Duplicate.Path}");
+                Console.WriteLine($"  {Describe(duplicate.Duplicate)}");
             }
         }
         Console.WriteLine();
 
         return ExitCode.Success;
     }
+
+    // Prefers the reconstructed absolute path; falls back to the portable location when the file's
+    // disk is not currently mounted.
+    private string Describe(IFileRecord record)
+        => diskRegistry.TryGetAbsolutePath(record.Location) ?? record.Location.ToString();
 }

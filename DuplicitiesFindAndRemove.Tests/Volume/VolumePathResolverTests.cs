@@ -6,8 +6,15 @@ namespace DuplicitiesFindAndRemove.Tests.Volume;
 public class VolumePathResolverTests
 {
     [Fact]
-    public void Resolve_PopulatesRelativePath_ForExistingFile()
+    public void Resolve_ProducesDiskIdAndRelativePath_ForExistingFile()
     {
+        // The resolver writes the placeholder identity file to the drive root, which requires
+        // write access there (elevation on the Windows system drive).
+        if (!TestEnvironment.IsDriveRootWritable(Path.GetTempPath()))
+        {
+            return;
+        }
+
         string directory = Path.Combine(Path.GetTempPath(), "volume-path-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
 
@@ -18,12 +25,10 @@ public class VolumePathResolverTests
             File.WriteAllText(filePath, "content");
 
             var resolver = new VolumePathResolver();
-            VolumePathInfo info = resolver.Resolve(filePath);
+            FileLocation location = resolver.Resolve(filePath);
 
-            Assert.False(string.IsNullOrWhiteSpace(info.VolumeStableId));
-            Assert.EndsWith("nested/file.txt", info.RelativePath, StringComparison.Ordinal);
-            Assert.False(string.IsNullOrWhiteSpace(info.VolumeRootPath));
-            Assert.StartsWith(info.VolumeRootPath, filePath, StringComparison.OrdinalIgnoreCase);
+            Assert.NotEqual(Guid.Empty, location.DiskId);
+            Assert.EndsWith("nested/file.txt", location.RelativePath, StringComparison.Ordinal);
         }
         finally
         {

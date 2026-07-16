@@ -82,16 +82,4 @@ public class ByteCompareVerifierTests : IDisposable
     {
         await Assert.ThrowsAsync<ArgumentException>(() => verifier.HasSameContentAsync(path!, "other.bin"));
     }
-
-    [Fact]
-    public async Task HasSameContent_WithEntities_DelegatesToPaths()
-    {
-        string a = CreateFile("a.bin", new byte[] { 5, 6, 7 });
-        string b = CreateFile("b.bin", new byte[] { 5, 6, 7 });
-
-        var entityA = new FileRecordEntity { Path = a };
-        var entityB = new FileRecordEntity { Path = b };
-
-        Assert.True(await verifier.HasSameContentAsync(entityA, entityB));
-    }
 }
