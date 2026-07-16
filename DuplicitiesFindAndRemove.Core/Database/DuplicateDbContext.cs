@@ -26,8 +26,25 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     {
         // Canonical records and confirmed duplicates live in their own tables. Pruning duplicates
         // therefore never leaves gaps in the canonical "FileRecords" identity sequence.
-        modelBuilder.Entity<FileRecordEntity>().ToTable("FileRecords");
-        modelBuilder.Entity<DuplicateRecordEntity>().ToTable("Duplicates");
+        modelBuilder.Entity<FileRecordEntity>(entity =>
+        {
+            entity.ToTable("FileRecords");
+
+            // Indexes backing the lookups below. Without them every candidate query does a full
+            // table scan, which degrades to quadratic complexity on large file sets.
+            entity.HasIndex(record => record.RelativePath);
+            entity.HasIndex(record => record.SizeBytes);
+            entity.HasIndex(record => new { record.SizeBytes, record.SampleHash });
+            entity.HasIndex(record => new { record.SizeBytes, record.FullHash });
+        });
+
+        modelBuilder.Entity<DuplicateRecordEntity>(entity =>
+        {
+            entity.ToTable("Duplicates");
+
+            // Duplicate lookups are keyed by path when deciding whether a file is already known.
+            entity.HasIndex(record => record.RelativePath);
+        });
     }
 
     public async Task<FileRecordEntity?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
