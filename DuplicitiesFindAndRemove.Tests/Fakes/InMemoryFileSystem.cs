@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text;
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 
 namespace DuplicitiesFindAndRemove.Tests.Fakes;
@@ -52,9 +53,15 @@ internal sealed class InMemoryFileSystem : IFileSystemAbstraction
 
     public bool DirectoryExists(string path) => true;
 
-    public long GetFileSize(string path) => ReadAllBytes(path).Length;
+    public FileMetadata? GetFileMetadata(string path)
+    {
+        if (files.TryGetValue(Path.GetFullPath(path), out byte[]? content))
+        {
+            return new FileMetadata(content.Length, 0);
+        }
 
-    public long? GetLastWriteTimeUtcNanoseconds(string path) => 0;
+        return null;
+    }
 
     public Stream OpenRead(string path) => new MemoryStream(ReadAllBytes(path), writable: false);
 

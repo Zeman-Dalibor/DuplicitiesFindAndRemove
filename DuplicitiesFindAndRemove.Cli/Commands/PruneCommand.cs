@@ -55,11 +55,6 @@ internal sealed class PruneCommand
             string fileName = Path.GetFileName(duplicate.Path);
             string targetPath = GetUniqueTargetPath(quarantineDirectory, fileName);
 
-            Console.WriteLine($"Moving: {duplicate.Path} -> {targetPath}");
-            File.Move(duplicate.Path, targetPath);
-
-            duplicate.Path = targetPath;
-
             if (!originalsById.TryGetValue(duplicate.DuplicateOfFileId, out string? originalPath))
             {
                 await db.SaveChangesAsync();
@@ -71,7 +66,21 @@ internal sealed class PruneCommand
             if (!File.Exists(originalPath))
             {
                 await db.SaveChangesAsync();
-                await Console.Error.WriteLineAsync($"FATAL: Original file is missing after moving the duplicate: {originalPath}. " +
+                await Console.Error.WriteLineAsync($"FATAL: Original file is missing before moving the duplicate: {originalPath}. " + Environment.NewLine +
+                                        $"Duplicate path: {duplicate.Path}" + Environment.NewLine +
+                                        $"Target path: {targetPath}");
+                return ExitCode.Error;
+            }
+
+            Console.WriteLine($"Moving: {duplicate.Path} -> {targetPath}");
+            File.Move(duplicate.Path, targetPath);
+            duplicate.Path = targetPath;
+
+            if (!File.Exists(originalPath))
+            {
+                await db.SaveChangesAsync();
+                await Console.Error.WriteLineAsync($"FATAL: Original file is missing after moving the duplicate: {originalPath}. " + Environment.NewLine +
+                                        $"Duplicate path: {duplicate.Path}" + Environment.NewLine +
                                         $"Target path: {targetPath}");
                 return ExitCode.Error;
             }

@@ -115,6 +115,7 @@ public class ComplexTests
         args = new[] { "report" };
         await dispatcher.RunAsync(args);
 
+        // Move of canonical - this will cause an error during prune, as the canonical file is missing
         File.Move(Path.Combine(pathToSimpleSmallFiles, Path.GetFileName(canonical.Path)), Path.Combine(deleteFolder, "canonical_moved.txt"));
 
         args = new[] { "prune", deleteFolder };
@@ -127,8 +128,7 @@ public class ComplexTests
         testOutputHelper.WriteLine("Errors:");
         testOutputHelper.WriteLine(errorOutput);
 
-        Assert.Contains("Moving:", output);
-        Assert.Contains("FATAL: Original file is missing after mov", errorOutput);
+        Assert.Contains("FATAL: Original file is missing before moving", errorOutput);
 
         var detectedFiles = await dbContext.Duplicates.Select(entity => entity.Path).ToListAsync();
 
@@ -147,7 +147,7 @@ public class ComplexTests
             }
         }
 
-        Assert.Equal(1, movedCount);
-        Assert.Equal(2, skippedCount);
+        Assert.Equal(0, movedCount);
+        Assert.Equal(3, skippedCount);
     }
 }

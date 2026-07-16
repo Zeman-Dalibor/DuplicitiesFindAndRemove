@@ -1,4 +1,5 @@
 ﻿using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 using DuplicitiesFindAndRemove.Core.Volume;
 
@@ -56,6 +57,12 @@ public sealed class DuplicateScanner : IDuplicateScanner
                 Console.WriteLine(unauthorizedAccessException);
                 result.ErrorFilesCount++;
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Processing of file='{path}' failed:");
+                Console.WriteLine(ex);
+                result.ErrorFilesCount++;
+            }
         }
 
         return result;
@@ -81,7 +88,16 @@ public sealed class DuplicateScanner : IDuplicateScanner
             return;
         }
 
-        long sizeBytes = fileSystem.GetFileSize(fullPath);
+        // Size and last-write time are read together in a single stat to spare the disk.
+        FileMetadata? metadata = fileSystem.GetFileMetadata(fullPath);
+        if (metadata is null)
+        {
+            await Console.Error.WriteLineAsync($"File not found: {fullPath}");
+            result.ErrorFilesCount++;
+            return;
+        }
+
+        long sizeBytes = metadata.Value.SizeBytes;
         VolumePathInfo volumePath = volumePathResolver.Resolve(fullPath);
         var record = new FileRecordEntity
         {
@@ -89,7 +105,7 @@ public sealed class DuplicateScanner : IDuplicateScanner
             VolumeStableId = volumePath.VolumeStableId,
             RelativePath = volumePath.RelativePath,
             SizeBytes = sizeBytes,
-            ModificationTimeStamp = fileSystem.GetLastWriteTimeUtcNanoseconds(fullPath),
+            ModificationTimeStamp = metadata.Value.LastWriteTimeUtcNanoseconds,
             State = ScanState.NotScanned,
             SampleHash = null,
             FullHash = null,

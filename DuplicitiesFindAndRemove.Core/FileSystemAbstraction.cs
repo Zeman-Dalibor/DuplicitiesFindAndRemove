@@ -1,3 +1,4 @@
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 using System.IO.Enumeration;
 using System.Runtime.CompilerServices;
@@ -18,17 +19,18 @@ public sealed class FileSystemAbstraction : IFileSystemAbstraction
 
     public bool DirectoryExists(string path) => Directory.Exists(path);
 
-    public long GetFileSize(string path) => new FileInfo(path).Length;
-
-    public long? GetLastWriteTimeUtcNanoseconds(string path)
+    public FileMetadata? GetFileMetadata(string path)
     {
-        if (!File.Exists(path))
+        // A single FileInfo caches both values from one underlying stat, so Length and
+        // LastWriteTimeUtc do not trigger a second metadata access to the disk.
+        var info = new FileInfo(path);
+        if (!info.Exists)
         {
             return null;
         }
 
         // DateTime ticks are 100-nanosecond units.
-        return File.GetLastWriteTimeUtc(path).Ticks * 100L;
+        return new FileMetadata(info.Length, info.LastWriteTimeUtc.Ticks * 100L);
     }
 
     public Stream OpenRead(string path)

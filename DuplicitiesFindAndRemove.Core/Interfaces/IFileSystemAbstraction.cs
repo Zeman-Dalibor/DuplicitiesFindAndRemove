@@ -1,3 +1,4 @@
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
@@ -11,9 +12,11 @@ public interface IFileSystemAbstraction
 
     bool DirectoryExists(string path);
 
-    long GetFileSize(string path);
-
-    long? GetLastWriteTimeUtcNanoseconds(string path);
+    /// <summary>
+    /// Reads size and last-write time in a single stat call, or returns <c>null</c> when the
+    /// file does not exist. Combining both values avoids a second metadata access to the disk.
+    /// </summary>
+    FileMetadata? GetFileMetadata(string path);
 
     Stream OpenRead(string path);
 
