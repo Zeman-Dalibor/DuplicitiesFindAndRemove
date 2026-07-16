@@ -1,4 +1,4 @@
-namespace DuplicitiesFindAndRemove.Core;
+namespace DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 
 /// <summary>
 /// Operating-system-aware comparison of file system paths. Windows path names are

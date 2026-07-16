@@ -1,4 +1,5 @@
 ﻿using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 using System.Buffers;
 

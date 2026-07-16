@@ -84,6 +84,9 @@ internal sealed class PruneCommand
                                         $"Target path: {targetPath}");
                 return ExitCode.Error;
             }
+
+            // Update the duplicate record in the database
+            await db.SaveChangesAsync();
         }
 
         await db.SaveChangesAsync();

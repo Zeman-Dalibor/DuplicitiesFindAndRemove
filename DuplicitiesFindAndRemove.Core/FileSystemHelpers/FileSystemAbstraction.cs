@@ -1,9 +1,8 @@
-using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 using System.IO.Enumeration;
 using System.Runtime.CompilerServices;
 
-namespace DuplicitiesFindAndRemove.Core;
+namespace DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 
 /// <summary>
 /// Production <see cref="IFileSystemAbstraction"/> backed by the real disk.

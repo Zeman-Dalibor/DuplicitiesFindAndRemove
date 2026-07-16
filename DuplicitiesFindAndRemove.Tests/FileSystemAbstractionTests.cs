@@ -1,4 +1,4 @@
-using DuplicitiesFindAndRemove.Core;
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using Xunit;
 
 namespace DuplicitiesFindAndRemove.Tests;

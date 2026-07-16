@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DuplicitiesFindAndRemove.Core.Database;
 
@@ -22,6 +23,7 @@ public sealed class FileRecordEntity : IFileRecord
 
     public byte[]? FullHash { get; set; }
 
+    [NotMapped]
     public long? DuplicateOfFileId { get; set; }
 
     public ScanState State { get; set; } = ScanState.NotScanned;

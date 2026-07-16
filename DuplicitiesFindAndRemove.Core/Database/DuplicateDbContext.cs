@@ -5,9 +5,12 @@ namespace DuplicitiesFindAndRemove.Core.Database;
 
 public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
 {
-    public DuplicateDbContext(DbContextOptions<DuplicateDbContext> options)
+    private readonly SqliteInMemoryDatabase? inMemoryDatabase;
+
+    public DuplicateDbContext(DbContextOptions<DuplicateDbContext> options, SqliteInMemoryDatabase? inMemoryDatabase = null)
         : base(options)
     {
+        this.inMemoryDatabase = inMemoryDatabase;
     }
 
     public void Initialize()
@@ -74,6 +77,11 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
 
     public async Task AddDuplicate(FileRecordEntity duplicate, CancellationToken cancellationToken)
     {
+        if (duplicate.DuplicateOfFileId is null)
+        {
+            throw new ArgumentException("Duplicate record must reference a canonical file ID.", nameof(duplicate));
+        }
+
         var existing = await Duplicates
             .FirstOrDefaultAsync(entity => entity.Path == duplicate.Path, cancellationToken);
 
@@ -88,7 +96,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
             existing.RelativePath = duplicate.RelativePath;
             existing.SampleHash = duplicate.SampleHash;
             existing.FullHash = duplicate.FullHash;
-            existing.DuplicateOfFileId = duplicate.DuplicateOfFileId ?? 0;
+            existing.DuplicateOfFileId = duplicate.DuplicateOfFileId ?? throw new ArgumentException("Duplicate record must reference a canonical file ID.", nameof(duplicate));
             existing.State = duplicate.State;
             existing.ModificationTimeStamp = duplicate.ModificationTimeStamp;
         }
@@ -99,12 +107,25 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     public Task AddCanonical(FileRecordEntity record, CancellationToken cancellationToken)
         => UpsertCanonicalAndSaveAsync(record, cancellationToken);
 
+    // Persists tracked changes to the in-memory database and then backs the in-memory database up
+    // to the on-disk file, so progress survives an interrupted scan.
+    public async Task FlushAsync(CancellationToken cancellationToken = default)
+    {
+        await SaveChangesAsync(cancellationToken);
+        inMemoryDatabase?.Persist();
+    }
+
     // Inserts or updates a canonical record and persists immediately. Persisting per record assigns
     // the database-generated Id, which the scanner relies on when linking duplicates to their
     // canonical record. The operation is idempotent: a record that is already tracked is not
     // inserted twice.
     private async Task UpsertCanonicalAndSaveAsync(FileRecordEntity record, CancellationToken cancellationToken)
     {
+        if (record.DuplicateOfFileId is not null)
+        {
+            throw new ArgumentException("Canonical record must not reference a canonical file ID.", nameof(record));
+        }
+
         if (Entry(record).State == EntityState.Detached)
         {
             var existing = await FileRecords
@@ -131,7 +152,7 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
         SizeBytes = source.SizeBytes,
         SampleHash = source.SampleHash,
         FullHash = source.FullHash,
-        DuplicateOfFileId = source.DuplicateOfFileId ?? 0,
+        DuplicateOfFileId = source.DuplicateOfFileId ?? throw new ArgumentException("Duplicate record must reference a canonical file ID.", nameof(source)),
         State = source.State,
         ModificationTimeStamp = source.ModificationTimeStamp
     };

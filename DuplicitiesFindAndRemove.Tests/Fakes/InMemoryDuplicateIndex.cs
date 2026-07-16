@@ -68,6 +68,9 @@ internal sealed class InMemoryDuplicateIndex : IDuplicateIndex
         return Task.CompletedTask;
     }
 
+    public Task FlushAsync(CancellationToken cancellationToken = default)
+        => Task.CompletedTask;
+
     public void SetFileAsModified(FileRecordEntity record)
     {
     }

@@ -7,6 +7,8 @@ namespace DuplicitiesFindAndRemove.Core;
 
 public sealed class DuplicateScanner : IDuplicateScanner
 {
+    private const int ProgressReportFileInterval = 1000;
+
     private readonly IFileSystemAbstraction fileSystem;
     private readonly IFileContentHasher hasher;
     private readonly IDuplicateIndex index;
@@ -37,6 +39,8 @@ public sealed class DuplicateScanner : IDuplicateScanner
 
         var enumerableFiles = fileSystem.EnumerateFilesAsync(rootPath, "*", cancellationToken);
 
+        int processedFilesCount = 0;
+
         await foreach (string path in enumerableFiles)
         {
             try
@@ -63,6 +67,16 @@ public sealed class DuplicateScanner : IDuplicateScanner
                 Console.WriteLine(ex);
                 result.ErrorFilesCount++;
             }
+
+            processedFilesCount++;
+
+            // Periodically persist progress to the database and report how far we have got, so a
+            // long-running scan does not lose all work if it is interrupted.
+            if (processedFilesCount % ProgressReportFileInterval == 0)
+            {
+                await index.FlushAsync(cancellationToken);
+                Console.WriteLine($"Processed {processedFilesCount} files.");
+            }
         }
 
         return result;
@@ -71,13 +85,6 @@ public sealed class DuplicateScanner : IDuplicateScanner
     private async Task ScanFile(string path, DuplicateDetectionResult result, CancellationToken cancellationToken)
     {
         string fullPath = Path.GetFullPath(path);
-
-        if (!fileSystem.FileExists(fullPath))
-        {
-            await Console.Error.WriteLineAsync($"File not found: {fullPath}");
-            result.ErrorFilesCount++;
-            return;
-        }
 
         var existing = await index.GetByPathAsync(fullPath, cancellationToken);
 

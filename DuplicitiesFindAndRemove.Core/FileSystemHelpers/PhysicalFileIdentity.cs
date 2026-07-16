@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-namespace DuplicitiesFindAndRemove.Core;
+namespace DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 
 /// <summary>
 /// Resolves and compares the physical identity of a file — the volume plus file id on

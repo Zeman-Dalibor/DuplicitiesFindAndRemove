@@ -24,4 +24,6 @@ public interface IDuplicateIndex
     Task AddDuplicate(FileRecordEntity duplicate, CancellationToken cancellationToken);
 
     Task AddCanonical(FileRecordEntity record, CancellationToken cancellationToken);
+
+    Task FlushAsync(CancellationToken cancellationToken = default);
 }

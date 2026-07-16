@@ -1,6 +1,7 @@
 ﻿using DuplicitiesFindAndRemove.Cli.Commands;
 using DuplicitiesFindAndRemove.Core;
 using DuplicitiesFindAndRemove.Core.Database;
+using DuplicitiesFindAndRemove.Core.FileSystemHelpers;
 using DuplicitiesFindAndRemove.Core.Hashing;
 using DuplicitiesFindAndRemove.Core.Interfaces;
 using DuplicitiesFindAndRemove.Core.Verification;
@@ -40,9 +41,10 @@ internal static class Program
             var db = provider.GetRequiredService<SqliteInMemoryDatabase>();
 
             Console.WriteLine($"Persisting DB to disk ... {dbPath}");
-            db.Persist();
-
             db.Dispose();
+
+            Console.WriteLine("Work done. Continue with any key ...");
+            Console.ReadKey();
         }
     }
 
