@@ -26,5 +26,19 @@ public interface IDuplicateIndex
 
     Task AddCanonical(FileRecordEntity record, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<FileRecordEntity>> GetCanonicalRecordsUnderLocationAsync(
+        FileLocation directoryLocation,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<DuplicateRecordEntity>> GetDuplicateRecordsUnderLocationAsync(
+        FileLocation directoryLocation,
+        CancellationToken cancellationToken = default);
+
+    Task<int> DeleteCanonicalWithDuplicatesAsync(long canonicalId, CancellationToken cancellationToken = default);
+
+    Task DeleteDuplicateAsync(long duplicateId, CancellationToken cancellationToken = default);
+
+    Task UpdateDuplicateAsync(DuplicateRecordEntity duplicate, CancellationToken cancellationToken = default);
+
     Task FlushAsync(CancellationToken cancellationToken = default);
 }

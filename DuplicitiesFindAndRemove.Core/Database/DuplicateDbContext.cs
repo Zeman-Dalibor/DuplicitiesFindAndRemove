@@ -128,6 +128,75 @@ public sealed class DuplicateDbContext : DbContext, IDuplicateIndex
     public Task AddCanonical(FileRecordEntity record, CancellationToken cancellationToken)
         => UpsertCanonicalAndSaveAsync(record, cancellationToken);
 
+    public async Task<IReadOnlyList<FileRecordEntity>> GetCanonicalRecordsUnderLocationAsync(
+        FileLocation directoryLocation,
+        CancellationToken cancellationToken = default)
+    {
+        string directoryRelativePath = directoryLocation.RelativePath;
+        Guid diskId = directoryLocation.DiskId;
+
+        return await FileRecords
+            .Where(record => record.DiskId == diskId
+                && (directoryRelativePath.Length == 0
+                    || record.RelativePath == directoryRelativePath
+                    || record.RelativePath.StartsWith(directoryRelativePath)))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DuplicateRecordEntity>> GetDuplicateRecordsUnderLocationAsync(
+        FileLocation directoryLocation,
+        CancellationToken cancellationToken = default)
+    {
+        string directoryRelativePath = directoryLocation.RelativePath;
+        Guid diskId = directoryLocation.DiskId;
+
+        return await Duplicates
+            .Where(record => record.DiskId == diskId
+                && (directoryRelativePath.Length == 0
+                    || record.RelativePath == directoryRelativePath
+                    || record.RelativePath.StartsWith(directoryRelativePath)))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<int> DeleteCanonicalWithDuplicatesAsync(long canonicalId, CancellationToken cancellationToken = default)
+    {
+        List<DuplicateRecordEntity> linkedDuplicates = await Duplicates
+            .Where(duplicate => duplicate.DuplicateOfFileId == canonicalId)
+            .ToListAsync(cancellationToken);
+
+        if (linkedDuplicates.Count > 0)
+        {
+            Duplicates.RemoveRange(linkedDuplicates);
+        }
+
+        FileRecordEntity? canonical = await FileRecords.FindAsync(new object[] { canonicalId }, cancellationToken);
+        if (canonical is not null)
+        {
+            FileRecords.Remove(canonical);
+        }
+
+        await SaveChangesAsync(cancellationToken);
+        return linkedDuplicates.Count;
+    }
+
+    public async Task DeleteDuplicateAsync(long duplicateId, CancellationToken cancellationToken = default)
+    {
+        DuplicateRecordEntity? duplicate = await Duplicates.FindAsync(new object[] { duplicateId }, cancellationToken);
+        if (duplicate is null)
+        {
+            return;
+        }
+
+        Duplicates.Remove(duplicate);
+        await SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateDuplicateAsync(DuplicateRecordEntity duplicate, CancellationToken cancellationToken = default)
+    {
+        Duplicates.Update(duplicate);
+        await SaveChangesAsync(cancellationToken);
+    }
+
     // Persists tracked changes to the in-memory database and then backs the in-memory database up
     // to the on-disk file, so progress survives an interrupted scan.
     public async Task FlushAsync(CancellationToken cancellationToken = default)

@@ -69,6 +69,75 @@ internal sealed class InMemoryDuplicateIndex : IDuplicateIndex
         return Task.CompletedTask;
     }
 
+    public Task<IReadOnlyList<FileRecordEntity>> GetCanonicalRecordsUnderLocationAsync(
+        FileLocation directoryLocation,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<FileRecordEntity> matches = records
+            .Where(record => record.DuplicateOfFileId is null
+                && record.DiskId == directoryLocation.DiskId
+                && IndexPathFilter.IsUnderDirectory(record.RelativePath, directoryLocation.RelativePath))
+            .ToList();
+
+        return Task.FromResult(matches);
+    }
+
+    public Task<IReadOnlyList<DuplicateRecordEntity>> GetDuplicateRecordsUnderLocationAsync(
+        FileLocation directoryLocation,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<DuplicateRecordEntity> matches = records
+            .Where(record => record.DuplicateOfFileId is not null
+                && record.DiskId == directoryLocation.DiskId
+                && IndexPathFilter.IsUnderDirectory(record.RelativePath, directoryLocation.RelativePath))
+            .Select(record => new DuplicateRecordEntity
+            {
+                Id = record.Id,
+                DiskId = record.DiskId,
+                RelativePath = record.RelativePath,
+                SizeBytes = record.SizeBytes,
+                SampleHash = record.SampleHash,
+                FullHash = record.FullHash,
+                DuplicateOfFileId = record.DuplicateOfFileId!.Value,
+                State = record.State,
+                ModificationTimeStamp = record.ModificationTimeStamp
+            })
+            .ToList();
+
+        return Task.FromResult(matches);
+    }
+
+    public Task<int> DeleteCanonicalWithDuplicatesAsync(long canonicalId, CancellationToken cancellationToken = default)
+    {
+        int cascadeDeleted = records.RemoveAll(record =>
+            record.DuplicateOfFileId == canonicalId);
+
+        records.RemoveAll(record => record.Id == canonicalId && record.DuplicateOfFileId is null);
+        return Task.FromResult(cascadeDeleted);
+    }
+
+    public Task DeleteDuplicateAsync(long duplicateId, CancellationToken cancellationToken = default)
+    {
+        records.RemoveAll(record => record.Id == duplicateId && record.DuplicateOfFileId is not null);
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateDuplicateAsync(DuplicateRecordEntity duplicate, CancellationToken cancellationToken = default)
+    {
+        FileRecordEntity? existing = records.FirstOrDefault(record => record.Id == duplicate.Id);
+        if (existing is null)
+        {
+            return Task.CompletedTask;
+        }
+
+        existing.SizeBytes = duplicate.SizeBytes;
+        existing.SampleHash = duplicate.SampleHash;
+        existing.FullHash = duplicate.FullHash;
+        existing.State = duplicate.State;
+        existing.ModificationTimeStamp = duplicate.ModificationTimeStamp;
+        return Task.CompletedTask;
+    }
+
     public Task FlushAsync(CancellationToken cancellationToken = default)
         => Task.CompletedTask;
 

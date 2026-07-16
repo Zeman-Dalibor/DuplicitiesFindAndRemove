@@ -12,6 +12,7 @@ internal sealed class InMemoryFileSystem : IFileSystemAbstraction
 {
     private readonly Dictionary<string, byte[]> files = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> identities = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, long> lastWriteTimeUtcNanoseconds = new(StringComparer.OrdinalIgnoreCase);
 
     public InMemoryFileSystem AddFile(string path, string content)
         => AddFile(path, Encoding.UTF8.GetBytes(content));
@@ -19,6 +20,12 @@ internal sealed class InMemoryFileSystem : IFileSystemAbstraction
     public InMemoryFileSystem AddFile(string path, byte[] content)
     {
         files[Path.GetFullPath(path)] = content;
+        return this;
+    }
+
+    public InMemoryFileSystem WithLastWriteTimeUtcNanoseconds(string path, long value)
+    {
+        lastWriteTimeUtcNanoseconds[Path.GetFullPath(path)] = value;
         return this;
     }
 
@@ -55,9 +62,11 @@ internal sealed class InMemoryFileSystem : IFileSystemAbstraction
 
     public FileMetadata? GetFileMetadata(string path)
     {
-        if (files.TryGetValue(Path.GetFullPath(path), out byte[]? content))
+        string fullPath = Path.GetFullPath(path);
+        if (files.TryGetValue(fullPath, out byte[]? content))
         {
-            return new FileMetadata(content.Length, 0);
+            long mtime = lastWriteTimeUtcNanoseconds.TryGetValue(fullPath, out long value) ? value : 0;
+            return new FileMetadata(content.Length, mtime);
         }
 
         return null;

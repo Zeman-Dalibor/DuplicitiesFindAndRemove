@@ -70,9 +70,11 @@ internal static class Program
         services.AddSingleton(new DuplicateDetectionOptions());
         services.AddScoped<IDuplicateIndex>(sp => sp.GetRequiredService<DuplicateDbContext>());
         services.AddScoped<IDuplicateScanner, DuplicateScanner>();
+        services.AddScoped<IIndexChecker, IndexChecker>();
 
         // CLI commands
         services.AddScoped<ScanCommand>();
+        services.AddScoped<CheckCommand>();
         services.AddScoped<ReportCommand>();
         services.AddScoped<PruneCommand>();
     }
